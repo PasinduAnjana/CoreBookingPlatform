@@ -1,0 +1,7 @@
+<Solution>
+  <Folder Name="/Services/">
+    <Project Path="IntegrationService/IntegrationService.csproj" />
+    <Project Path="OrderService/OrderService.csproj" />
+    <Project Path="ProductService/ProductService.csproj" />
+  </Folder>
+</Solution>
