@@ -53,7 +53,7 @@ namespace ProductService.Controllers
         }
 
         [HttpDelete("{id:int}")]
-        public async Task<IActionResult> DeleteCategory(int id)
+        public async Task<IActionResult> DeleteCategory([FromRoute]int id)
         {
             var isDeleted = await _categoryService.DeleteCategoryAsync(id);
             if (!isDeleted)

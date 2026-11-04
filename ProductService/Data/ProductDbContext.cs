@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using ProductService.Models;
 
 namespace ProductService.Data
 {
@@ -7,6 +8,39 @@ namespace ProductService.Data
         public ProductDbContext(DbContextOptions<ProductDbContext> options) : base(options)
         {
         }
-        public DbSet<ProductService.Models.Category> Categories { get; set; } = null!;
+        public DbSet<Category> Categories { get; set; } = null!;
+        public DbSet<Supplier> Suppliers { get; set; } = null!;
+        public DbSet<Product> Products { get; set; } = null!;
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            base.OnModelCreating(modelBuilder);
+            // Configure the relationships
+            modelBuilder.Entity<Supplier>()
+                .HasIndex(s => s.Code)
+                .IsUnique();
+
+            modelBuilder.Entity<Product>()
+                .HasIndex(p => new { p.SupplierId, p.supplierProductId })
+                .IsUnique();
+
+            modelBuilder.Entity<Product>()
+                .HasOne(p => p.Category)
+                .WithMany()
+                .HasForeignKey(p => p.CategoryId)
+                .OnDelete(DeleteBehavior.Restrict);
+            modelBuilder.Entity<Product>()
+                .HasOne(p => p.Supplier)
+                .WithMany(s => s.Products)
+                .HasForeignKey(p => p.SupplierId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            //seed supplier data
+            modelBuilder.Entity<Supplier>().HasData(
+                new Supplier { Id = 1, Name = "ABC Hotels",Code = "ABC", IsActive = true },
+                new Supplier { Id = 2, Name = "CDE Activities", Code = "CDE", IsActive = true }
+            );
+        }
+
     }
 }
