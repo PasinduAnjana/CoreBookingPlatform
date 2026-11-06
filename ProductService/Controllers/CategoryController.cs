@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using ProductService.DTOs;
-using ProductService.Services;
+using ProductService.Services.Interfaces;
 
 namespace ProductService.Controllers
 {
@@ -9,9 +9,9 @@ namespace ProductService.Controllers
     [ApiController]
     public class CategoryController : ControllerBase
     {
-        private readonly CategoryService _categoryService;
+        private readonly ICategoryService _categoryService;
 
-        public CategoryController(CategoryService categoryService)
+        public CategoryController(ICategoryService categoryService)
         {
             _categoryService = categoryService;
         }
@@ -60,7 +60,7 @@ namespace ProductService.Controllers
             {
                 return NotFound();
             }
-            return Ok();
+            return NoContent();
         }
     }
 }

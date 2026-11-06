@@ -2,19 +2,21 @@
 using ProductService.Data;
 using ProductService.DTOs;
 using ProductService.Models;
+using ProductService.Repositories.Interfaces;
+using ProductService.Services.Interfaces;
 
 namespace ProductService.Services
 {
-    public class CategoryService
+    public class CategoryService : ICategoryService
     {
-        private readonly ProductDbContext _context;
+        private readonly ICategoryRepository _repository;
 
-        public CategoryService(ProductDbContext context)
+        public CategoryService(ICategoryRepository repository)
         {
-            _context = context;
+            _repository = repository;
         }
 
-        private static CategoryDto toDto(Category category)
+        private CategoryDto toDto(Category category)
         {
             return new CategoryDto
             {
@@ -22,18 +24,22 @@ namespace ProductService.Services
                 Name = category.Name,
                 Description = category.Description
             };
-        }
+        }   
 
         public async Task<List<CategoryDto>> GetAllCategoriesAsync()
         {
-            var categories = await _context.Categories.ToListAsync();
-            return categories.Select(toDto).ToList();
+            var categories = await _repository.GetAllCategoriesAsync();
+            return categories.Select(c => toDto(c)).ToList();
         }
 
-        public async Task<CategoryDto?> GetCategoryByIdAsync(int id)
+        public async Task<CategoryDto> GetCategoryByIdAsync(int id)
         {
-            var category = await _context.Categories.FindAsync(id);
-            return category == null ? null : toDto(category);
+            var category = await _repository.GetCategoryByIdAsync(id);
+            if (category == null)
+            {
+                return null;
+            }
+            return toDto(category);
         }
 
         public async Task<CategoryDto> CreateCategoryAsync(CreateCategoryDto createCategoryDto)
@@ -43,34 +49,26 @@ namespace ProductService.Services
                 Name = createCategoryDto.Name,
                 Description = createCategoryDto.Description
             };
-            _context.Categories.Add(category);
-            await _context.SaveChangesAsync();
-            return toDto(category);
+            var createdCategory = await _repository.CreateCategoryAsync(category);
+            return toDto(createdCategory);
         }
 
-        public async Task<CategoryDto?> UpdateCategoryAsync(int id, UpdateCategoryDto updateCategoryDto)
+        public async Task<CategoryDto> UpdateCategoryAsync(int id,UpdateCategoryDto updateCategoryDto)
         {
-            var category = await _context.Categories.FindAsync(id);
-            if (category == null)
+            var existingCategory = await _repository.GetCategoryByIdAsync(id);
+            if (existingCategory == null)
             {
                 return null;
             }
-            category.Name = updateCategoryDto.Name;
-            category.Description = updateCategoryDto.Description;
-            await _context.SaveChangesAsync();
-            return toDto(category);
+            existingCategory.Name = updateCategoryDto.Name;
+            existingCategory.Description = updateCategoryDto.Description;
+            var updatedCategory = await _repository.UpdateCategoryAsync(existingCategory);
+            return toDto(updatedCategory);
         }
 
         public async Task<bool> DeleteCategoryAsync(int id)
         {
-            var category = await _context.Categories.FindAsync(id);
-            if (category == null)
-            {
-                return false;
-            }
-            _context.Categories.Remove(category);
-            await _context.SaveChangesAsync();
-            return true;
+            return await _repository.DeleteCategoryAsync(id);
         }
 
 

@@ -1,5 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using ProductService.Data;
+using ProductService.Repositories;
+using ProductService.Repositories.Interfaces;
+using ProductService.Services;
+using ProductService.Services.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,7 +16,15 @@ builder.Services.AddOpenApi();
 builder.Services.AddDbContext<ProductDbContext>(
     options => options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-builder.Services.AddScoped<ProductService.Services.CategoryService>();
+builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
+builder.Services.AddScoped<ICategoryService, CategoryService>();
+builder.Services.AddScoped<ISupplierRepository, SupplierRepository>();
+builder.Services.AddScoped<ISupplierService, SupplierService>();
+builder.Services.AddScoped<IProductRepository, ProductRepository>();
+builder.Services.AddScoped<IProductService, ProductService.Services.ProductService>();
+builder.Services.AddScoped<IProductContentRepository, ProductContentRepository>();
+builder.Services.AddScoped<IProductContentService,ProductContentService>();
+
 
 var app = builder.Build();
 
