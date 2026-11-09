@@ -24,6 +24,8 @@ builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IProductService, ProductService.Services.ProductService>();
 builder.Services.AddScoped<IProductContentRepository, ProductContentRepository>();
 builder.Services.AddScoped<IProductContentService,ProductContentService>();
+builder.Services.AddScoped<IProductImportRepository, ProductImportRepository>();
+builder.Services.AddScoped<IProductImportService, ProductImportService>();
 
 
 var app = builder.Build();

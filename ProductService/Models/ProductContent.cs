@@ -12,6 +12,7 @@
         public string? InclusionsJson { get; set; }
         public string? ExclusionsJson { get; set; }
         public string? AdditionalInfoJson { get; set; }
+        public DateTimeOffset LastUpdated { get; set; }
 
     }
 }

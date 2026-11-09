@@ -98,6 +98,9 @@ namespace ProductService.Migrations
                     b.Property<string>("AdditionalInfoJson")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("ExclusionsJson")
                         .HasColumnType("nvarchar(max)");
 
@@ -113,11 +116,11 @@ namespace ProductService.Migrations
                     b.Property<string>("InclusionsJson")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateTimeOffset>("LastUpdated")
+                        .HasColumnType("datetimeoffset");
+
                     b.Property<int>("ProductId")
                         .HasColumnType("int");
-
-                    b.Property<string>("description")
-                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("Id");
 
