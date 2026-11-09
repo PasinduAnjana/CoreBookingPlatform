@@ -1,4 +1,8 @@
 <Solution>
+  <Folder Name="/Adapters/">
+    <Project Path="AbcMockApi/AbcMockApi.csproj" Id="1c822c5d-fdd4-4932-8424-cb29e6aea3d7" />
+    <Project Path="CdeMockApi/CdeMockApi.csproj" Id="7589c5f5-0b9f-405a-bb4c-158795b6bbd8" />
+  </Folder>
   <Folder Name="/Services/">
     <Project Path="IntegrationService/IntegrationService.csproj" />
     <Project Path="OrderService/OrderService.csproj" />

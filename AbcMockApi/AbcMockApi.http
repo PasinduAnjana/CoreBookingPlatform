@@ -1,0 +1,6 @@
+@AbcMockApi_HostAddress = http://localhost:5275
+
+GET {{AbcMockApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

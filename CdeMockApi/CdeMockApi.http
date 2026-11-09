@@ -1,0 +1,6 @@
+@CdeMockApi_HostAddress = http://localhost:5199
+
+GET {{CdeMockApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
