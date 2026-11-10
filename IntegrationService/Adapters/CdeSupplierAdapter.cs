@@ -99,10 +99,18 @@ namespace IntegrationService.Adapters
                 $"&adults={request.Adults}" +
                 $"&children={request.Children}";
 
-            var result = await _httpClient.GetFromJsonAsync<
-                CdeActivityAvailabilityResponse>(
-                    url,
-                    cancellationToken);
+            using var response = await _httpClient.GetAsync(url, cancellationToken);
+
+            if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+            {
+                var message = await response.Content.ReadAsStringAsync(cancellationToken);
+                throw new ArgumentException(message);
+            }
+
+            response.EnsureSuccessStatusCode();
+
+            var result = await response.Content.ReadFromJsonAsync<CdeActivityAvailabilityResponse>(
+                cancellationToken: cancellationToken);
 
             if (result == null)
             {

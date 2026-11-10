@@ -22,7 +22,7 @@ namespace ProductService.Controllers
             return Ok(products);
         }
 
-        [HttpGet("{id}")]
+        [HttpGet("{id:int}")]
         public async Task<IActionResult> GetProductById(int id)
         {
             var product = await _service.GetProductByIdAsync(id);

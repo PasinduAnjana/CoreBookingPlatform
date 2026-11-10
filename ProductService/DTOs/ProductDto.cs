@@ -13,6 +13,7 @@ namespace ProductService.DTOs
         public int SupplierId { get; set; }
         public SupplierDto? Supplier { get; set; } = null!;
         public string SupplierProductId { get; set; } = string.Empty;
+        public string SupplierCode { get; set; } = string.Empty;
         public bool IsActive { get; set; } = true;
         public DateTimeOffset? LastUpdated { get; set; }
     }

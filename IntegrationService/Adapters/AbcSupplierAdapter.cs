@@ -103,8 +103,18 @@ namespace IntegrationService.Adapters
                 $"&children={request.Children}" +
                 $"&rooms={request.Rooms}";
 
-            var result = await _httpClient.GetFromJsonAsync<
-                AbcHotelAvailabilityResponse>(url,cancellationToken);
+            using var response = await _httpClient.GetAsync(url, cancellationToken);
+
+            if (response.StatusCode == System.Net.HttpStatusCode.BadRequest)
+            {
+                var message = await response.Content.ReadAsStringAsync(cancellationToken);
+                throw new ArgumentException(message);
+            }
+
+            response.EnsureSuccessStatusCode();
+
+            var result = await response.Content.ReadFromJsonAsync<AbcHotelAvailabilityResponse>(
+                cancellationToken: cancellationToken);
 
             if (result == null)
             {

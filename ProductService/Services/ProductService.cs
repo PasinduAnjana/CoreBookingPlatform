@@ -45,6 +45,7 @@ namespace ProductService.Services
                 },
 
                 SupplierProductId = product.SupplierProductId,
+                SupplierCode = product.Supplier.Code,
                 IsActive = product.IsActive,
                 LastUpdated = product.LastUpdated
             };
