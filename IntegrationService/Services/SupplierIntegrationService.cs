@@ -29,5 +29,33 @@ namespace IntegrationService.Services
 
             return results.SelectMany(products => products).ToList();
         }
+
+
+        public async Task<NormalizedAvailabilityResponse> CheckAvailabilityAsync(
+            NormalizedAvailabilityRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(request.SupplierCode))
+            {
+                throw new ArgumentException(
+                    "Supplier code is required.");
+            }
+
+            var adapter = _adapters.FirstOrDefault(a =>
+                a.SupplierCode.Equals(
+                    request.SupplierCode,
+                    StringComparison.OrdinalIgnoreCase));
+
+            if (adapter == null)
+            {
+                throw new KeyNotFoundException(
+                    $"Supplier '{request.SupplierCode}' is not supported.");
+            }
+
+            return await adapter.CheckAvailabilityAsync(
+                request,
+                cancellationToken);
+        }
+
     }
 }

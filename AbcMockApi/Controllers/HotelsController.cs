@@ -82,5 +82,86 @@ namespace AbcMockApi.Controllers
             }
             return Ok(hotel);
         }
+
+
+        [HttpGet("{hotelCode}/availability")]
+        public IActionResult CheckAvailability(
+            string hotelCode,
+            [FromQuery] string roomCode,
+            [FromQuery] DateOnly checkIn,
+            [FromQuery] DateOnly checkOut,
+            [FromQuery] int adults = 2,
+            [FromQuery] int children = 0,
+            [FromQuery] int rooms = 1)
+        {
+            var hotel = Hotels.FirstOrDefault(h =>
+                h.HotelCode.Equals(hotelCode,StringComparison.OrdinalIgnoreCase));
+
+            if (hotel == null)
+                return NotFound("Hotel not found.");
+
+            var room = hotel.RoomTypes.FirstOrDefault(r =>
+                r.RoomCode.Equals( roomCode,StringComparison.OrdinalIgnoreCase));
+
+            if (room == null)
+                return NotFound("Room type not found.");
+
+            if (checkIn < DateOnly.FromDateTime(DateTime.UtcNow) ||
+                checkOut <= checkIn)
+            {
+                return BadRequest("Invalid booking dates.");
+            }
+
+            if (rooms < 1 || adults < 1 || children < 0)
+                return BadRequest("Invalid guest or room count.");
+
+            if (adults > room.MaxAdults * rooms ||
+                children > room.MaxChildren * rooms ||
+                adults < rooms)
+            {
+                return BadRequest(
+                    "Guest count exceeds room capacity.");
+            }
+
+            // Fixed mock inventory for each room type.
+            int roomsLeft = room.RoomCode.ToUpperInvariant() switch
+            {
+                "STD" => 5,
+                "DLX" => 2,
+                "SUITE" => 1,
+                _ => 0
+            };
+
+            // Fixed mock nightly rates in LKR.
+            decimal nightlyRate = room.RoomCode.ToUpperInvariant() switch
+            {
+                "STD" => 12000m,
+                "DLX" => 18000m,
+                "SUITE" => 30000m,
+                _ => 0m
+            };
+
+            int nights = checkOut.DayNumber - checkIn.DayNumber;
+            bool available = roomsLeft >= rooms;
+
+            var result = new HotelAvailabilityResponse
+            {
+                HotelCode = hotel.HotelCode,
+                RoomCode = room.RoomCode,
+                CheckIn = checkIn,
+                CheckOut = checkOut,
+                IsAvailable = available,
+                RoomsLeft = roomsLeft,
+                Currency = "LKR",
+                NightlyRate = nightlyRate,
+                Nights = nights,
+                TotalAmount = available
+                    ? nightlyRate * nights * rooms
+                    : 0m
+            };
+
+            return Ok(result);
+        }
+
     }
 }

@@ -85,5 +85,106 @@ namespace CdeMockApi.Controllers
 
             return Ok(activity);
         }
+
+
+        [HttpGet("{activityId}/availability")]
+        public IActionResult CheckAvailability(
+            string activityId,
+            [FromQuery] string packageId,
+            [FromQuery] DateOnly date,
+            [FromQuery] string timeSlot,
+            [FromQuery] int adults = 1,
+            [FromQuery] int children = 0)
+        {
+            var activity = Activities.FirstOrDefault(a =>
+                a.ActivityId.Equals(
+                    activityId,
+                    StringComparison.OrdinalIgnoreCase));
+
+            if (activity == null)
+                return NotFound("Activity not found.");
+
+            var package = activity.Packages.FirstOrDefault(p =>
+                p.PackageId.Equals(
+                    packageId,
+                    StringComparison.OrdinalIgnoreCase));
+
+            if (package == null)
+                return NotFound("Package not found.");
+
+            if (date < DateOnly.FromDateTime(DateTime.UtcNow))
+                return BadRequest("Invalid activity date.");
+
+            if (adults < 0 || children < 0 || adults + children < 1)
+                return BadRequest("Invalid participant count.");
+
+            if (children > 0 &&
+                !package.PassengerTypes.Contains("Child"))
+            {
+                return BadRequest(
+                    "Children are not allowed for this package.");
+            }
+
+            if (adults > 0 &&
+                !package.PassengerTypes.Contains("Adult"))
+            {
+                return BadRequest(
+                    "Adults are not allowed for this package.");
+            }
+
+            var validSlots = new[] { "09:00", "14:00" };
+
+            if (!validSlots.Contains(timeSlot))
+                return BadRequest("Invalid time slot.");
+
+            // Mock inventory varies by package.
+            int remainingSeats = package.PackageId.ToUpperInvariant() switch
+            {
+                "MORNING" => 8,
+                "PRIVATE" => 6,
+                "STANDARD" => 12,
+                _ => 0
+            };
+
+            // Mock ticket prices vary by package.
+            decimal adultPrice = package.PackageId.ToUpperInvariant() switch
+            {
+                "MORNING" => 5000m,
+                "PRIVATE" => 12000m,
+                "STANDARD" => 7000m,
+                _ => 0m
+            };
+
+            decimal childPrice = adultPrice * 0.5m;
+
+            int participants = adults + children;
+
+            bool available =
+                participants <= remainingSeats &&
+                participants <= package.MaxParticipants;
+
+            decimal total = available
+                ? adults * adultPrice + children * childPrice
+                : 0m;
+
+            var result = new ActivityAvailabilityResponse
+            {
+                ActivityId = activity.ActivityId,
+                PackageId = package.PackageId,
+                Date = date,
+                TimeSlot = timeSlot,
+                Available = available,
+                RemainingSeats = remainingSeats,
+                Adults = adults,
+                Children = children,
+                CurrencyCode = "LKR",
+                AdultTicketPrice = adultPrice,
+                ChildTicketPrice = childPrice,
+                PayableAmount = total
+            };
+
+            return Ok(result);
+        }
+
     }
 }

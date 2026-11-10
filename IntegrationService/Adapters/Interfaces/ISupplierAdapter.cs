@@ -6,5 +6,7 @@ namespace IntegrationService.Adapters.Interfaces
     {
         string SupplierCode { get; }
         Task<List<NormalizedProduct>> GetProductsAsync(CancellationToken cancellationToken = default);
+
+        Task<NormalizedAvailabilityResponse> CheckAvailabilityAsync(NormalizedAvailabilityRequest request,CancellationToken cancellationToken = default);
     }
 } 

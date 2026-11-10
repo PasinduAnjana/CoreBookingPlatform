@@ -53,5 +53,76 @@ namespace IntegrationService.Adapters
                 }
             };
         }
+
+        public async Task<NormalizedAvailabilityResponse> CheckAvailabilityAsync(
+            NormalizedAvailabilityRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(request.SupplierProductId) ||
+                string.IsNullOrWhiteSpace(request.SupplierOptionId))
+            {
+                throw new ArgumentException(
+                    "Product ID and option ID are required.");
+            }
+
+            if (!request.Date.HasValue ||
+                string.IsNullOrWhiteSpace(request.TimeSlot))
+            {
+                throw new ArgumentException(
+                    "Activity date and time slot are required.");
+            }
+
+            if (request.Adults < 0 ||
+                request.Children < 0 ||
+                request.Adults + request.Children < 1)
+            {
+                throw new ArgumentException(
+                    "At least one participant is required.");
+            }
+
+            var activityId = Uri.EscapeDataString(
+                request.SupplierProductId);
+
+            var packageId = Uri.EscapeDataString(
+                request.SupplierOptionId);
+
+            var timeSlot = Uri.EscapeDataString(
+                request.TimeSlot);
+
+            var date = request.Date.Value;
+
+            var url =
+                $"api/activities/{activityId}/availability" +
+                $"?packageId={packageId}" +
+                $"&date={date:yyyy-MM-dd}" +
+                $"&timeSlot={timeSlot}" +
+                $"&adults={request.Adults}" +
+                $"&children={request.Children}";
+
+            var result = await _httpClient.GetFromJsonAsync<
+                CdeActivityAvailabilityResponse>(
+                    url,
+                    cancellationToken);
+
+            if (result == null)
+            {
+                throw new InvalidOperationException(
+                    "CDE returned an empty availability response.");
+            }
+
+            return new NormalizedAvailabilityResponse
+            {
+                SupplierCode = SupplierCode,
+                SupplierProductId = result.ActivityId,
+                SupplierOptionId = result.PackageId,
+
+                Available = result.Available,
+                AvailableQuantity = result.RemainingSeats,
+
+                Currency = result.CurrencyCode,
+                TotalPrice = result.PayableAmount
+            };
+        }
+
     }
 }
