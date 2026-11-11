@@ -44,6 +44,8 @@ namespace ProductService.Repositories
             {
                 return false;
             }
+            if (await _context.Products.AnyAsync(p => p.CategoryId == id))
+                throw new InvalidOperationException("This category is assigned to products. Reassign those products before deleting it.");
             _context.Categories.Remove(category);
             await _context.SaveChangesAsync();
             return true;

@@ -41,6 +41,18 @@ namespace OrderService.Repositories
                 .FirstOrDefaultAsync(o => o.Id == orderId);
         }
 
+        public async Task<(List<Order> Items, int TotalCount)> GetOrdersAsync(
+            int page, int pageSize, CancellationToken cancellationToken)
+        {
+            var query = _context.Orders.AsNoTracking();
+            var totalCount = await query.CountAsync(cancellationToken);
+            var items = await query.Include(o => o.Bookings)
+                .OrderByDescending(o => o.CreatedAt).ThenBy(o => o.Id)
+                .Skip((page - 1) * pageSize).Take(pageSize)
+                .ToListAsync(cancellationToken);
+            return (items, totalCount);
+        }
+
         public async Task AddOrderAsync(Order order)
         {
             await _context.Orders.AddAsync(order);

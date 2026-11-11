@@ -99,8 +99,7 @@ namespace CdeMockApi.Controllers
 
                 if (request.Date <
                         DateOnly.FromDateTime(DateTime.UtcNow) ||
-                    (request.TimeSlot != "09:00" &&
-                     request.TimeSlot != "14:00"))
+                    !activity.TimeSlots.Contains(request.TimeSlot))
                 {
                     return BadRequest("Invalid date or time slot.");
                 }

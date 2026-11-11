@@ -6,6 +6,7 @@
         public string Title { get; set; } = string.Empty;
         public string Destination { get; set; } = string.Empty;
         public int DurationMinutes { get; set; }
+        public List<string> TimeSlots { get; set; } = ["09:00", "14:00"];
 
         public string Overview { get; set; } = string.Empty;
 

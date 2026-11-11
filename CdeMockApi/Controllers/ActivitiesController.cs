@@ -132,7 +132,7 @@ namespace CdeMockApi.Controllers
                     "Adults are not allowed for this package.");
             }
 
-            var validSlots = new[] { "09:00", "14:00" };
+            var validSlots = activity.TimeSlots;
 
             if (!validSlots.Contains(timeSlot))
                 return BadRequest("Invalid time slot.");

@@ -1,8 +1,26 @@
 {
   "Routes": [
     {
+      "UpstreamPathTemplate": "/api/products/{productId}/content",
+      "UpstreamHttpMethod": [
+        "GET",
+        "PUT",
+        "DELETE"
+      ],
+      "DownstreamPathTemplate": "/api/products/{productId}/content",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 7128
+        }
+      ]
+    },
+    {
       "UpstreamPathTemplate": "/api/product",
-      "UpstreamHttpMethod": [ "GET" ],
+      "UpstreamHttpMethod": [
+        "GET"
+      ],
       "DownstreamPathTemplate": "/api/product",
       "DownstreamScheme": "https",
       "DownstreamHostAndPorts": [
@@ -14,7 +32,11 @@
     },
     {
       "UpstreamPathTemplate": "/api/product/{everything}",
-      "UpstreamHttpMethod": [ "GET", "PUT", "PATCH" ],
+      "UpstreamHttpMethod": [
+        "GET",
+        "PUT",
+        "PATCH"
+      ],
       "DownstreamPathTemplate": "/api/product/{everything}",
       "DownstreamScheme": "https",
       "DownstreamHostAndPorts": [
@@ -26,7 +48,9 @@
     },
     {
       "UpstreamPathTemplate": "/api/carts",
-      "UpstreamHttpMethod": [ "POST" ],
+      "UpstreamHttpMethod": [
+        "POST"
+      ],
       "DownstreamPathTemplate": "/api/carts",
       "DownstreamScheme": "https",
       "DownstreamHostAndPorts": [
@@ -71,7 +95,9 @@
     },
     {
       "UpstreamPathTemplate": "/api/supplier/{everything}",
-      "UpstreamHttpMethod": [ "GET" ],
+      "UpstreamHttpMethod": [
+        "GET"
+      ],
       "DownstreamPathTemplate": "/api/supplier/{everything}",
       "DownstreamScheme": "https",
       "DownstreamHostAndPorts": [
@@ -81,10 +107,12 @@
         }
       ]
     },
-
     {
       "UpstreamPathTemplate": "/api/orders/{everything}",
-      "UpstreamHttpMethod": [ "GET", "POST"],
+      "UpstreamHttpMethod": [
+        "GET",
+        "POST"
+      ],
       "DownstreamPathTemplate": "/api/orders/{everything}",
       "DownstreamScheme": "https",
       "DownstreamHostAndPorts": [
@@ -93,8 +121,50 @@
           "Port": 7022
         }
       ]
+    },
+    {
+      "UpstreamHttpMethod": [
+        "GET",
+        "POST"
+      ],
+      "DownstreamScheme": "https",
+      "DownstreamPathTemplate": "/api/category",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 7128
+        }
+      ],
+      "UpstreamPathTemplate": "/api/category"
+    },
+    {
+      "UpstreamHttpMethod": [
+        "GET"
+      ],
+      "DownstreamScheme": "https",
+      "DownstreamPathTemplate": "/api/orders",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 7022
+        }
+      ],
+      "UpstreamPathTemplate": "/api/orders"
+    },
+    {
+      "UpstreamHttpMethod": [
+        "POST"
+      ],
+      "DownstreamScheme": "https",
+      "DownstreamPathTemplate": "/api/integration/import/{supplierCode}",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 7098
+        }
+      ],
+      "UpstreamPathTemplate": "/api/integration/import/{supplierCode}"
     }
-
   ],
   "GlobalConfiguration": {
     "BaseUrl": "https://localhost:7000"

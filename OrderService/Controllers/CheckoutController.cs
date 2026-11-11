@@ -55,6 +55,17 @@ namespace OrderService.Controllers
             }
         }
 
+        [HttpGet("orders")]
+        public async Task<IActionResult> GetOrders(
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 20,
+            CancellationToken cancellationToken = default)
+        {
+            if (page < 1 || pageSize < 1 || pageSize > 100 || page > int.MaxValue / pageSize)
+                return BadRequest("Use a positive page and a page size between 1 and 100.");
+            return Ok(await _service.GetOrdersAsync(page, pageSize, cancellationToken));
+        }
+
         [HttpGet("orders/{orderId:guid}")]
         public async Task<IActionResult> GetOrder(Guid orderId)
         {

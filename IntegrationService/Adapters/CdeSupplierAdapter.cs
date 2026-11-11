@@ -29,6 +29,7 @@ namespace IntegrationService.Adapters
             var attributes = new
             {
                 durationMinutes = activity.DurationMinutes,
+                timeSlots = activity.TimeSlots,
                 options = activity.Packages.Select(package => new
                 {
                     supplierOptionId = package.PackageId,

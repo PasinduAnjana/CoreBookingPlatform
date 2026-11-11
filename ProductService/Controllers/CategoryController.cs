@@ -55,12 +55,23 @@ namespace ProductService.Controllers
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> DeleteCategory([FromRoute]int id)
         {
-            var isDeleted = await _categoryService.DeleteCategoryAsync(id);
-            if (!isDeleted)
+            try
             {
-                return NotFound();
+                var isDeleted = await _categoryService.DeleteCategoryAsync(id);
+                if (!isDeleted)
+                {
+                    return NotFound();
+                }
+                return NoContent();
             }
-            return NoContent();
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(ex.Message);
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateException)
+            {
+                return Conflict("This category is assigned to products. Reassign those products before deleting it.");
+            }
         }
     }
 }

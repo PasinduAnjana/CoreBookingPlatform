@@ -65,6 +65,18 @@ namespace OrderService.Services
             return order == null ? null : ToDto(order);
         }
 
+        public async Task<OrderPageDto> GetOrdersAsync(int page, int pageSize, CancellationToken cancellationToken)
+        {
+            var result = await _repository.GetOrdersAsync(page, pageSize, cancellationToken);
+            return new OrderPageDto
+            {
+                Items = result.Items.Select(ToDto).ToList(),
+                TotalCount = result.TotalCount,
+                Page = page,
+                PageSize = pageSize
+            };
+        }
+
         public async Task<OrderDto?> CheckoutAsync(
             Guid cartId,
             CheckoutRequestDto request,

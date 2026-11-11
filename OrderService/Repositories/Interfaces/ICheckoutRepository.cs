@@ -10,6 +10,7 @@ namespace OrderService.Repositories.Interfaces
         Task<Order?> GetOrderByCartIdAsync(Guid cartId);
 
         Task<Order?> GetOrderByIdAsync(Guid orderId);
+        Task<(List<Order> Items, int TotalCount)> GetOrdersAsync(int page, int pageSize, CancellationToken cancellationToken);
 
         Task AddOrderAsync(Order order);
 

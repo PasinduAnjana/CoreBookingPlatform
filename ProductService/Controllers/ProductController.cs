@@ -54,12 +54,19 @@ namespace ProductService.Controllers
         [HttpPut("{id:int}")]
         public async Task<IActionResult> UpdateProduct(int id, [FromBody] UpdateProductDto dto)
         {
-            var result = await _service.UpdateProductAsync(id, dto);
-            if (!result)
+            try
             {
-                return NotFound();
+                var result = await _service.UpdateProductAsync(id, dto);
+                if (!result)
+                {
+                    return NotFound();
+                }
+                return NoContent();
             }
-            return NoContent();
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
         }
     }
 }
