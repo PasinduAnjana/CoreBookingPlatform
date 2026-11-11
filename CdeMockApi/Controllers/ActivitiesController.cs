@@ -8,7 +8,7 @@ namespace CdeMockApi.Controllers
     [ApiController]
     public class ActivitiesController : ControllerBase
     {
-        private static readonly List<Activity> Activities =
+        internal static readonly List<Activity> Activities =
         [
             new Activity
             {
@@ -137,14 +137,14 @@ namespace CdeMockApi.Controllers
             if (!validSlots.Contains(timeSlot))
                 return BadRequest("Invalid time slot.");
 
-            // Mock inventory varies by package.
-            int remainingSeats = package.PackageId.ToUpperInvariant() switch
-            {
-                "MORNING" => 8,
-                "PRIVATE" => 6,
-                "STANDARD" => 12,
-                _ => 0
-            };
+
+            int remainingSeats =
+                ActivityBookingsController.GetRemainingSeats(
+                    activity.ActivityId,
+                    package.PackageId,
+                    date,
+                    timeSlot);
+
 
             // Mock ticket prices vary by package.
             decimal adultPrice = package.PackageId.ToUpperInvariant() switch

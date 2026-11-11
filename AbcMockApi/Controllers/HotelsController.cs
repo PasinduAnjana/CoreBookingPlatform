@@ -8,7 +8,7 @@ namespace AbcMockApi.Controllers
     [ApiController]
     public class HotelsController : ControllerBase
     {
-        private static readonly List<Hotel> Hotels =
+        internal static readonly List<Hotel> Hotels =
         [
             new Hotel
             {
@@ -123,14 +123,13 @@ namespace AbcMockApi.Controllers
                     "Guest count exceeds room capacity.");
             }
 
-            // Fixed mock inventory for each room type.
-            int roomsLeft = room.RoomCode.ToUpperInvariant() switch
-            {
-                "STD" => 5,
-                "DLX" => 2,
-                "SUITE" => 1,
-                _ => 0
-            };
+
+            int roomsLeft = HotelBookingsController.GetRemainingRooms(
+                hotel.HotelCode,
+                room.RoomCode,
+                checkIn,
+                checkOut);
+
 
             // Fixed mock nightly rates in LKR.
             decimal nightlyRate = room.RoomCode.ToUpperInvariant() switch

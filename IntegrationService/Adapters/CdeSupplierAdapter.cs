@@ -31,7 +31,7 @@ namespace IntegrationService.Adapters
                 durationMinutes = activity.DurationMinutes,
                 options = activity.Packages.Select(package => new
                 {
-                    supplierPackageId = package.PackageId,
+                    supplierOptionId = package.PackageId,
                     label = package.Label,
                     maxParticipants = package.MaxParticipants,
                     passengerTypes = package.PassengerTypes
@@ -129,6 +129,97 @@ namespace IntegrationService.Adapters
 
                 Currency = result.CurrencyCode,
                 TotalPrice = result.PayableAmount
+            };
+        }
+
+
+        public async Task<NormalizedBookingResponse> CreateBookingAsync(
+            NormalizedBookingRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(request.SupplierProductId) ||
+                string.IsNullOrWhiteSpace(request.SupplierOptionId) ||
+                string.IsNullOrWhiteSpace(request.IdempotencyKey) ||
+                string.IsNullOrWhiteSpace(request.CustomerName))
+            {
+                throw new ArgumentException(
+                    "Product, option, idempotency key and customer are required.");
+            }
+
+            if (!request.Date.HasValue ||
+                string.IsNullOrWhiteSpace(request.TimeSlot))
+            {
+                throw new ArgumentException(
+                    "Activity date and time slot are required.");
+            }
+
+            if (request.Adults < 0 ||
+                request.Children < 0 ||
+                request.Adults + request.Children < 1)
+            {
+                throw new ArgumentException(
+                    "Invalid participant count.");
+            }
+
+            // Translate the normalized request to CDE's contract.
+            var cdeRequest = new
+            {
+                idempotencyKey = request.IdempotencyKey,
+                activityId = request.SupplierProductId,
+                packageId = request.SupplierOptionId,
+                date = request.Date.Value,
+                timeSlot = request.TimeSlot,
+                adults = request.Adults,
+                children = request.Children,
+                customerName = request.CustomerName
+            };
+
+            using var response = await _httpClient.PostAsJsonAsync(
+                "api/activities/bookings",
+                cdeRequest,
+                cancellationToken);
+
+            var booking = await SupplierResponseReader
+                .ReadAsync<CdeActivityBookingResponse>(
+                    response, cancellationToken);
+
+            return new NormalizedBookingResponse
+            {
+                SupplierCode = SupplierCode,
+                SupplierBookingId = booking.BookingId,
+                SupplierProductId = booking.ActivityId,
+                SupplierOptionId = booking.PackageId,
+                Status = booking.Status,
+                Currency = booking.CurrencyCode,
+                TotalPrice = booking.PayableAmount
+            };
+        }
+
+
+        public async Task<NormalizedCancellationResponse> CancelBookingAsync(
+            NormalizedCancellationRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(request.SupplierBookingId))
+                throw new ArgumentException("Booking ID is required.");
+
+            var bookingId = Uri.EscapeDataString(
+                request.SupplierBookingId);
+
+            using var response = await _httpClient.PostAsync(
+                $"api/activities/bookings/{bookingId}/cancel",
+                content: null,
+                cancellationToken);
+
+            var booking = await SupplierResponseReader
+                .ReadAsync<CdeActivityBookingResponse>(
+                    response, cancellationToken);
+
+            return new NormalizedCancellationResponse
+            {
+                SupplierCode = SupplierCode,
+                SupplierBookingId = booking.BookingId,
+                Status = booking.Status
             };
         }
 

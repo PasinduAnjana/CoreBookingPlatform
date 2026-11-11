@@ -8,4 +8,5 @@
     <Project Path="OrderService/OrderService.csproj" />
     <Project Path="ProductService/ProductService.csproj" />
   </Folder>
+  <Project Path="ApiGateway/ApiGateway.csproj" Id="9a284a6c-f891-4c6c-a3de-af0a91574151" />
 </Solution>

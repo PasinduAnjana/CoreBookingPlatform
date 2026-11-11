@@ -1,4 +1,5 @@
-﻿using static OrderService.Dtos.ExternalServiceDtos;
+﻿using OrderService.DTOs;
+using static OrderService.Dtos.ExternalServiceDtos;
 
 namespace OrderService.Clients
 {
@@ -34,5 +35,43 @@ namespace OrderService.Clients
             return result ?? throw new InvalidOperationException(
                 "IntegrationService returned an empty response.");
         }
+
+
+        public async Task<SupplierBookingResponseDto> CreateBookingAsync(
+            SupplierBookingRequestDto request,
+            CancellationToken cancellationToken = default)
+        {
+            using var response = await _httpClient.PostAsJsonAsync(
+                "api/integration/bookings",
+                request,
+                cancellationToken);
+
+            response.EnsureSuccessStatusCode();
+
+            return await response.Content
+                .ReadFromJsonAsync<SupplierBookingResponseDto>(
+                    cancellationToken: cancellationToken)
+                ?? throw new InvalidOperationException(
+                    "Empty supplier booking response.");
+        }
+
+        public async Task<SupplierCancellationResponseDto> CancelBookingAsync(
+            SupplierCancellationRequestDto request,
+            CancellationToken cancellationToken = default)
+        {
+            using var response = await _httpClient.PostAsJsonAsync(
+                "api/integration/bookings/cancel",
+                request,
+                cancellationToken);
+
+            response.EnsureSuccessStatusCode();
+
+            return await response.Content
+                .ReadFromJsonAsync<SupplierCancellationResponseDto>(
+                    cancellationToken: cancellationToken)
+                ?? throw new InvalidOperationException(
+                    "Empty supplier cancellation response.");
+        }
+
     }
 }

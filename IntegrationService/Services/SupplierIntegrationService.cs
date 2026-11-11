@@ -57,5 +57,42 @@ namespace IntegrationService.Services
                 cancellationToken);
         }
 
+
+        private ISupplierAdapter GetAdapter(string supplierCode)
+        {
+            if (string.IsNullOrWhiteSpace(supplierCode))
+                throw new ArgumentException("Supplier code is required.");
+
+            return _adapters.FirstOrDefault(a =>
+                a.SupplierCode.Equals(
+                    supplierCode,
+                    StringComparison.OrdinalIgnoreCase))
+                ?? throw new KeyNotFoundException(
+                    $"Supplier '{supplierCode}' is not supported.");
+        }
+
+
+
+        public async Task<NormalizedBookingResponse> CreateBookingAsync(
+            NormalizedBookingRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            var adapter = GetAdapter(request.SupplierCode);
+
+            return await adapter.CreateBookingAsync(
+                request, cancellationToken);
+        }
+
+        public async Task<NormalizedCancellationResponse> CancelBookingAsync(
+            NormalizedCancellationRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            var adapter = GetAdapter(request.SupplierCode);
+
+            return await adapter.CancelBookingAsync(
+                request, cancellationToken);
+        }
+
+
     }
 }

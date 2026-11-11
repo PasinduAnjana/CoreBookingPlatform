@@ -136,5 +136,98 @@ namespace IntegrationService.Adapters
             };
         }
 
+
+        public async Task<NormalizedBookingResponse> CreateBookingAsync(
+            NormalizedBookingRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(request.SupplierProductId) ||
+                string.IsNullOrWhiteSpace(request.SupplierOptionId) ||
+                string.IsNullOrWhiteSpace(request.IdempotencyKey) ||
+                string.IsNullOrWhiteSpace(request.CustomerName))
+            {
+                throw new ArgumentException(
+                    "Product, option, idempotency key and customer are required.");
+            }
+
+            if (!request.CheckIn.HasValue ||
+                !request.CheckOut.HasValue ||
+                request.CheckOut <= request.CheckIn)
+            {
+                throw new ArgumentException("Invalid hotel dates.");
+            }
+
+            if (request.Adults < 1 ||
+                request.Children < 0 ||
+                request.Rooms < 1)
+            {
+                throw new ArgumentException(
+                    "Invalid guest or room count.");
+            }
+
+            // Translate the normalized request to ABC's contract.
+            var abcRequest = new
+            {
+                idempotencyKey = request.IdempotencyKey,
+                hotelCode = request.SupplierProductId,
+                roomCode = request.SupplierOptionId,
+                checkIn = request.CheckIn.Value,
+                checkOut = request.CheckOut.Value,
+                adults = request.Adults,
+                children = request.Children,
+                rooms = request.Rooms,
+                guestName = request.CustomerName
+            };
+
+            using var response = await _httpClient.PostAsJsonAsync(
+                "api/hotels/bookings",
+                abcRequest,
+                cancellationToken);
+
+            var booking = await SupplierResponseReader
+                .ReadAsync<AbcHotelBookingResponse>(
+                    response, cancellationToken);
+
+            return new NormalizedBookingResponse
+            {
+                SupplierCode = SupplierCode,
+                SupplierBookingId = booking.BookingId,
+                SupplierProductId = booking.HotelCode,
+                SupplierOptionId = booking.RoomCode,
+                Status = booking.Status,
+                Currency = booking.Currency,
+                TotalPrice = booking.TotalAmount
+            };
+        }
+
+
+        public async Task<NormalizedCancellationResponse> CancelBookingAsync(
+            NormalizedCancellationRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(request.SupplierBookingId))
+                throw new ArgumentException("Booking ID is required.");
+
+            var bookingId = Uri.EscapeDataString(
+                request.SupplierBookingId);
+
+            using var response = await _httpClient.PostAsync(
+                $"api/hotels/bookings/{bookingId}/cancel",
+                content: null,
+                cancellationToken);
+
+            var booking = await SupplierResponseReader
+                .ReadAsync<AbcHotelBookingResponse>(
+                    response, cancellationToken);
+
+            return new NormalizedCancellationResponse
+            {
+                SupplierCode = SupplierCode,
+                SupplierBookingId = booking.BookingId,
+                Status = booking.Status
+            };
+        }
+
+
     }
 }

@@ -218,7 +218,8 @@ namespace OrderService.Services
 
             bool optionExists = options.EnumerateArray().Any(option =>
                 option.ValueKind == JsonValueKind.Object &&
-                option.TryGetProperty("supplierOptionId", out var id) &&
+                (option.TryGetProperty("supplierOptionId", out var id) ||
+                 (supplier == "CDE" && option.TryGetProperty("supplierPackageId", out id))) &&
                 id.ValueKind == JsonValueKind.String &&
                 id.GetString() == dto.SupplierOptionId);
 

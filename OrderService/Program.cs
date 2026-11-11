@@ -43,6 +43,13 @@ builder.Services.AddHttpClient<IntegrationServiceClient>(client =>
 });
 
 
+builder.Services.AddScoped<ICheckoutRepository,CheckoutRepository>();
+
+builder.Services.AddScoped<ICheckoutService,CheckoutService>();
+
+builder.Services.AddScoped<IOrderCancellationService, OrderCancellationService>();
+
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
