@@ -1,4 +1,4 @@
-﻿namespace CdeMockApi.Models
+namespace CdeMockApi.Models
 {
     public class Activity
     {
@@ -6,7 +6,7 @@
         public string Title { get; set; } = string.Empty;
         public string Destination { get; set; } = string.Empty;
         public int DurationMinutes { get; set; }
-        public List<string> TimeSlots { get; set; } = ["09:00", "14:00"];
+        public List<string> TimeSlots { get; set; } = [];
 
         public string Overview { get; set; } = string.Empty;
 
@@ -24,4 +24,3 @@
         public List<string> PassengerTypes { get; set; } = [];
     }
 }
-

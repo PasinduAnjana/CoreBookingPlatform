@@ -1,4 +1,4 @@
-﻿
+
 namespace CdeMockApi.Models
 {
     public class CreateActivityBookingRequest
@@ -28,7 +28,7 @@ namespace CdeMockApi.Models
         public string CustomerName { get; set; } = string.Empty;
 
         public string Status { get; set; } = "Confirmed";
-        public string CurrencyCode { get; set; } = "LKR";
+        public string CurrencyCode { get; set; } = string.Empty;
         public decimal PayableAmount { get; set; }
         public DateTimeOffset CreatedAt { get; set; }  = DateTimeOffset.UtcNow;
     }

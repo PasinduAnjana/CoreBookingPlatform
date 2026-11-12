@@ -1,12 +1,17 @@
+using CdeMockApi.Services;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
 builder.Services.AddControllers();
+builder.Services.AddSingleton<ActivityMockData>();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
+// Validate and load the JSON catalog once, before accepting requests.
+_ = app.Services.GetRequiredService<ActivityMockData>();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

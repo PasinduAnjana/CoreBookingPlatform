@@ -1,4 +1,4 @@
-﻿namespace CdeMockApi.Models
+namespace CdeMockApi.Models
 {
     public class ActivityAvailabilityResponse
     {
@@ -10,7 +10,7 @@
         public int RemainingSeats { get; set; }
         public int Adults { get; set; }
         public int Children { get; set; }
-        public string CurrencyCode { get; set; } = "LKR";
+        public string CurrencyCode { get; set; } = string.Empty;
         public decimal AdultTicketPrice { get; set; }
         public decimal ChildTicketPrice { get; set; }
         public decimal PayableAmount { get; set; }

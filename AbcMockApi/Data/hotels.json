@@ -1,0 +1,38 @@
+{
+  "currency": "LKR",
+  "hotels": [
+    {
+      "hotelCode": "ABC-H001",
+      "hotelName": "Ocean View Hotel",
+      "city": "Colombo",
+      "starRating": 4,
+      "description": "A beachfront hotel in Colombo.",
+      "facilities": ["Wi-Fi", "Pool", "Restaurant"],
+      "images": [
+        "https://images.pexels.com/photos/32334284/pexels-photo-32334284.jpeg?auto=compress&cs=tinysrgb&w=600",
+        "https://images.pexels.com/photos/9752555/pexels-photo-9752555.jpeg?auto=compress&cs=tinysrgb&w=600"
+      ],
+      "roomTypes": [
+        { "roomCode": "STD", "roomName": "Standard Room", "maxAdults": 2, "maxChildren": 1, "bedType": "Double" },
+        { "roomCode": "DLX", "roomName": "Deluxe Room", "maxAdults": 2, "maxChildren": 2, "bedType": "King" }
+      ]
+    },
+    {
+      "hotelCode": "ABC-H002",
+      "hotelName": "Mountain Retreat",
+      "city": "Kandy",
+      "starRating": 5,
+      "description": "A luxury retreat surrounded by mountains.",
+      "facilities": ["Wi-Fi", "Spa", "Restaurant"],
+      "images": ["https://images.pexels.com/photos/1234567/pexels-photo-1234567.jpeg?auto=compress&cs=tinysrgb&w=600"],
+      "roomTypes": [
+        { "roomCode": "SUITE", "roomName": "Mountain Suite", "maxAdults": 3, "maxChildren": 1, "bedType": "King" }
+      ]
+    }
+  ],
+  "roomTypes": {
+    "STD": { "inventory": 5, "nightlyRate": 12000 },
+    "DLX": { "inventory": 2, "nightlyRate": 18000 },
+    "SUITE": { "inventory": 1, "nightlyRate": 30000 }
+  }
+}

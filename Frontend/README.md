@@ -67,7 +67,6 @@ For a production host, configure SPA fallback to `index.html` for the client rou
 
 Failure states are implemented, but supplier timeout, compensation and failed-cancellation scenarios were not fault-injected during this browser run.
 
-
 ## Management application
 
 Use **Management** in the main navigation, or open `/management`.
@@ -94,3 +93,9 @@ The management area shares the existing Vite application and runs as a local ass
 ### Management verification
 
 Browser checks against the real local gateway passed for category creation/editing, assignment, product activation, content save/create/delete, deletion confirmation, assigned-category protection, order listing/details and both supplier imports (two updates each, zero failures). Mobile navigation and table layout were inspected. Read-only API checks verified distinct pagination results and HTTP 400 for invalid pagination. The temporary category/content were removed and the original product description/category/active state were restored. Supplier imports refreshed the four supplier catalog entries.
+
+## Product image loading
+
+The mock supplier JSON datasets contain small image URLs (600px wide, with compression). The frontend displays the exact URL returned by the backend, without provider-specific URL rewriting or responsive image variants.
+
+After editing image URLs in the mock datasets, restart the mock APIs and run **Sync supplier catalog** for ABC and CDE. This updates the URLs persisted in ProductService; existing imported products otherwise retain their previous URLs.

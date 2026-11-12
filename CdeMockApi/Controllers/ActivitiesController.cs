@@ -1,5 +1,5 @@
-﻿using CdeMockApi.Models;
-using Microsoft.AspNetCore.Http;
+using CdeMockApi.Models;
+using CdeMockApi.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CdeMockApi.Controllers
@@ -8,76 +8,24 @@ namespace CdeMockApi.Controllers
     [ApiController]
     public class ActivitiesController : ControllerBase
     {
-        internal static readonly List<Activity> Activities =
-        [
-            new Activity
-            {
-                ActivityId = "CDE-A101",
-                Title = "Colombo City Walking Tour",
-                Destination = "Colombo",
-                DurationMinutes = 180,
-                Overview = "Explore the historic landmarks of Colombo.",
-                Gallery =
-                [
-                    "https://images.pexels.com/photos/9584386/pexels-photo-9584386.jpeg"
-                ],
-                Includes = ["Tour guide", "Drinking water"],
-                Excludes = ["Meals", "Transport"],
-                Packages =
-                [
-                    new ActivityPackage
-                    {
-                        PackageId = "MORNING",
-                        Label = "Morning Group Tour",
-                        MaxParticipants = 15,
-                        PassengerTypes = ["Adult", "Child"]
-                    },
-                    new ActivityPackage
-                    {
-                        PackageId = "PRIVATE",
-                        Label = "Private Tour",
-                        MaxParticipants = 6,
-                        PassengerTypes = ["Adult", "Child"]
-                    }
-                ]
-            },
-            new Activity
-            {
-                ActivityId = "CDE-A102",
-                Title = "Kandy Cultural Experience",
-                Destination = "Kandy",
-                DurationMinutes = 240,
-                Overview = "Experience traditional Kandyan culture.",
-                Gallery =
-                [
-                    "https://images.pexels.com/photos/20836970/pexels-photo-20836970.jpeg"
-                ],
-                Includes = ["Guide", "Entry tickets"],
-                Excludes = ["Hotel pickup"],
-                Packages =
-                [
-                    new ActivityPackage
-                    {
-                        PackageId = "STANDARD",
-                        Label = "Standard Experience",
-                        MaxParticipants = 20,
-                        PassengerTypes = ["Adult", "Child"]
-                    }
-                ]
-            }
-        ];
+        private readonly ActivityMockData _data;
+
+        public ActivitiesController(ActivityMockData data)
+        {
+            _data = data;
+        }
 
         [HttpGet]
         public ActionResult<List<Activity>> GetActivities()
         {
-            return Ok(Activities);
+            return Ok(_data.Activities);
         }
 
         [HttpGet("{activityId}")]
         public ActionResult<Activity> GetActivity(
             string activityId)
         {
-            var activity = Activities.FirstOrDefault(
+            var activity = _data.Activities.FirstOrDefault(
                 a => a.ActivityId == activityId);
 
             if (activity == null)
@@ -96,7 +44,7 @@ namespace CdeMockApi.Controllers
             [FromQuery] int adults = 1,
             [FromQuery] int children = 0)
         {
-            var activity = Activities.FirstOrDefault(a =>
+            var activity = _data.Activities.FirstOrDefault(a =>
                 a.ActivityId.Equals(
                     activityId,
                     StringComparison.OrdinalIgnoreCase));
@@ -139,23 +87,15 @@ namespace CdeMockApi.Controllers
 
 
             int remainingSeats =
-                ActivityBookingsController.GetRemainingSeats(
+                _data.GetRemainingSeats(
                     activity.ActivityId,
                     package.PackageId,
                     date,
                     timeSlot);
 
 
-            // Mock ticket prices vary by package.
-            decimal adultPrice = package.PackageId.ToUpperInvariant() switch
-            {
-                "MORNING" => 5000m,
-                "PRIVATE" => 12000m,
-                "STANDARD" => 7000m,
-                _ => 0m
-            };
-
-            decimal childPrice = adultPrice * 0.5m;
+            decimal adultPrice = _data.GetAdultRate(package.PackageId);
+            decimal childPrice = _data.GetChildRate(package.PackageId);
 
             int participants = adults + children;
 
@@ -177,7 +117,7 @@ namespace CdeMockApi.Controllers
                 RemainingSeats = remainingSeats,
                 Adults = adults,
                 Children = children,
-                CurrencyCode = "LKR",
+                CurrencyCode = _data.CurrencyCode,
                 AdultTicketPrice = adultPrice,
                 ChildTicketPrice = childPrice,
                 PayableAmount = total

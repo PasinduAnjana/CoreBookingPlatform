@@ -1,4 +1,4 @@
-﻿
+
 namespace AbcMockApi.Models
 {
     public class CreateHotelBookingRequest
@@ -36,7 +36,7 @@ namespace AbcMockApi.Models
         public string GuestName { get; set; } = string.Empty;
 
         public string Status { get; set; } = "Confirmed";
-        public string Currency { get; set; } = "LKR";
+        public string Currency { get; set; } = string.Empty;
 
         public decimal TotalAmount { get; set; }
         public DateTimeOffset CreatedAt { get; set; }

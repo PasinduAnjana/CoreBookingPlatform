@@ -1,5 +1,6 @@
-﻿
+
 using CdeMockApi.Models;
+using CdeMockApi.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CdeMockApi.Controllers
@@ -8,55 +9,16 @@ namespace CdeMockApi.Controllers
     [Route("api/activities/bookings")]
     public class ActivityBookingsController : ControllerBase
     {
-        private static readonly object Sync = new();
+        private readonly ActivityMockData _data;
 
-        private static readonly Dictionary<string, ActivityBooking>
-            Bookings = new();
-
-        private static readonly Dictionary<string, string>
-            IdempotencyKeys = new();
-
-        private static int GetBaseInventory(string packageId)
+        public ActivityBookingsController(ActivityMockData data)
         {
-            return packageId.ToUpperInvariant() switch
-            {
-                "MORNING" => 8,
-                "PRIVATE" => 6,
-                "STANDARD" => 12,
-                _ => 0
-            };
+            _data = data;
         }
 
-        private static decimal GetAdultRate(string packageId)
-        {
-            return packageId.ToUpperInvariant() switch
-            {
-                "MORNING" => 5000m,
-                "PRIVATE" => 12000m,
-                "STANDARD" => 7000m,
-                _ => 0m
-            };
-        }
-
-        private static int GetAvailableSeats(
-            string activityId,
-            string packageId,
-            DateOnly date,
-            string timeSlot)
-        {
-            int reserved = Bookings.Values
-                .Where(b =>
-                    b.Status == "Confirmed" &&
-                    b.ActivityId == activityId &&
-                    b.PackageId == packageId &&
-                    b.Date == date &&
-                    b.TimeSlot == timeSlot)
-                .Sum(b => b.Adults + b.Children);
-
-            return Math.Max(
-                0,
-                GetBaseInventory(packageId) - reserved);
-        }
+        private object Sync => _data.Sync;
+        private Dictionary<string, ActivityBooking> Bookings => _data.Bookings;
+        private Dictionary<string, string> IdempotencyKeys => _data.IdempotencyKeys;
 
         [HttpPost]
         public IActionResult CreateBooking(
@@ -80,7 +42,7 @@ namespace CdeMockApi.Controllers
                     return Ok(existing);
                 }
 
-                var activity = ActivitiesController.Activities
+                var activity = _data.Activities
                     .FirstOrDefault(a =>
                         a.ActivityId.Equals(
                             request.ActivityId,
@@ -128,7 +90,7 @@ namespace CdeMockApi.Controllers
                     return BadRequest(
                         "Package participant limit exceeded.");
 
-                int available = GetAvailableSeats(
+                int available = _data.GetRemainingSeats(
                     activity.ActivityId,
                     package.PackageId,
                     request.Date,
@@ -141,7 +103,7 @@ namespace CdeMockApi.Controllers
                 }
 
                 decimal adultRate =
-                    GetAdultRate(package.PackageId);
+                    _data.GetAdultRate(package.PackageId);
 
                 var booking = new ActivityBooking
                 {
@@ -157,9 +119,10 @@ namespace CdeMockApi.Controllers
                     Children = request.Children,
                     CustomerName = request.CustomerName,
 
+                    CurrencyCode = _data.CurrencyCode,
                     PayableAmount =
                         request.Adults * adultRate +
-                        request.Children * adultRate * 0.5m
+                        request.Children * _data.GetChildRate(package.PackageId)
                 };
 
                 Bookings[booking.BookingId] = booking;
@@ -221,22 +184,6 @@ namespace CdeMockApi.Controllers
             }
         }
 
-
-        internal static int GetRemainingSeats(
-            string activityId,
-            string packageId,
-            DateOnly date,
-            string timeSlot)
-        {
-            lock (Sync)
-            {
-                return GetAvailableSeats(
-                    activityId,
-                    packageId,
-                    date,
-                    timeSlot);
-            }
-        }
 
     }
 }

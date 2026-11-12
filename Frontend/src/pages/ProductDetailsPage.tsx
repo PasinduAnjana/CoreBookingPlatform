@@ -1,13 +1,27 @@
 import { useLoad } from "@/hooks/useLoad";
 import { useState, useRef, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
-import { MapPin, ArrowLeft, ShoppingBag, Check } from "lucide-react";
+import {
+  MapPin,
+  ArrowLeft,
+  ShoppingBag,
+  Check,
+  CalendarIcon,
+} from "lucide-react";
+import { format, startOfDay } from "date-fns";
+import type { DateRange } from "react-day-picker";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Select,
   SelectTrigger,
@@ -28,6 +42,10 @@ function BookingForm({ product }: { product: Product }) {
     supported = hotel || product.supplierCode === "CDE";
   const [optionId, setOption] = useState(""),
     [slot, setSlot] = useState("");
+  const [stay, setStay] = useState<DateRange>();
+  const [activityDate, setActivityDate] = useState<Date>();
+  const [datesOpen, setDatesOpen] = useState(false);
+  const [minimumDate, setMinimumDate] = useState(() => startOfDay(new Date()));
   const [busy, setBusy] = useState(false),
     [added, setAdded] = useState(false),
     [error, setError] = useState("");
@@ -43,9 +61,10 @@ function BookingForm({ product }: { product: Product }) {
       adults = Number(form.get("adults")),
       children = Number(form.get("children")),
       rooms = hotel ? Number(form.get("rooms")) : 1;
-    const date = String(form.get("date") || ""),
-      checkIn = String(form.get("checkIn") || ""),
-      checkOut = String(form.get("checkOut") || "");
+    // Format local calendar dates directly, avoiding UTC date shifts.
+    const date = activityDate ? format(activityDate, "yyyy-MM-dd") : "",
+      checkIn = stay?.from ? format(stay.from, "yyyy-MM-dd") : "",
+      checkOut = stay?.to ? format(stay.to, "yyyy-MM-dd") : "";
     let message = "";
     if (!option) message = "Choose a booking option.";
     else if (
@@ -56,7 +75,10 @@ function BookingForm({ product }: { product: Product }) {
       rooms < 1
     )
       message = "Enter valid guest counts.";
-    else if (hotel && (checkIn < today() || checkOut <= checkIn))
+    else if (
+      hotel &&
+      (!checkIn || !checkOut || checkIn < today() || checkOut <= checkIn)
+    )
       message =
         "Check-out must be after check-in, and dates cannot be in the past.";
     else if (
@@ -67,7 +89,10 @@ function BookingForm({ product }: { product: Product }) {
     )
       message =
         "The selected guests exceed this room’s occupancy limits, or there is less than one adult per room.";
-    else if (!hotel && (date < today() || !attrs.timeSlots.includes(slot)))
+    else if (
+      !hotel &&
+      (!date || date < today() || !attrs.timeSlots.includes(slot))
+    )
       message = "Select a valid activity date and time slot.";
     else if (
       !hotel &&
@@ -161,44 +186,124 @@ function BookingForm({ product }: { product: Product }) {
                 : `Up to ${option.maxParticipants ?? "—"} participants · ${option.passengerTypes?.join(", ") || "See supplier requirements"}`}
             </p>
           )}
-          {hotel ? (
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="checkIn">Check-in</Label>
-                <Input
-                  id="checkIn"
-                  name="checkIn"
-                  type="date"
-                  min={today()}
-                  required
-                  disabled={busy}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="checkOut">Check-out</Label>
-                <Input
-                  id="checkOut"
-                  name="checkOut"
-                  type="date"
-                  min={today()}
-                  required
-                  disabled={busy}
-                />
-              </div>
-            </div>
-          ) : (
+          <div className="space-y-2">
+            <Label htmlFor="booking-dates">
+              {hotel ? "Check-in / check-out" : "Activity date"}
+            </Label>
+            <Popover
+              open={datesOpen}
+              onOpenChange={(open) => {
+                if (open) setMinimumDate(startOfDay(new Date()));
+                setDatesOpen(open);
+              }}
+            >
+              <PopoverTrigger asChild>
+                <Button
+                  id="booking-dates"
+                  type="button"
+                  variant="outline"
+                  className="w-full justify-start text-left font-normal"
+                  aria-describedby="booking-dates-hint"
+                  disabled={busy || unavailable}
+                >
+                  <CalendarIcon className="size-4 shrink-0" />
+                  <span className="truncate">
+                    {hotel
+                      ? stay?.from
+                        ? `${format(stay.from, "MMM d, yyyy")} → ${stay.to ? format(stay.to, "MMM d, yyyy") : "Check-out"}`
+                        : "Select your stay dates"
+                      : activityDate
+                        ? format(activityDate, "MMM d, yyyy")
+                        : "Select activity date"}
+                  </span>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                align="end"
+                className="w-auto max-w-[calc(100vw-2rem)] max-h-[var(--radix-popover-content-available-height)] overflow-y-auto p-0"
+                aria-label={
+                  hotel
+                    ? "Select check-in and check-out dates"
+                    : "Select activity date"
+                }
+              >
+                {hotel ? (
+                  <Calendar
+                    mode="range"
+                    numberOfMonths={2}
+                    selected={stay}
+                    defaultMonth={stay?.from}
+                    min={1}
+                    excludeDisabled
+                    disabled={
+                      busy || unavailable ? true : { before: minimumDate }
+                    }
+                    autoFocus
+                    classNames={{
+                      months: "relative flex flex-col gap-4 sm:flex-row",
+                    }}
+                    onSelect={(value) => {
+                      setStay(value);
+                      setAdded(false);
+                      setError("");
+                    }}
+                  />
+                ) : (
+                  <Calendar
+                    mode="single"
+                    selected={activityDate}
+                    defaultMonth={activityDate}
+                    disabled={
+                      busy || unavailable ? true : { before: minimumDate }
+                    }
+                    autoFocus
+                    onSelect={(value) => {
+                      setActivityDate(value);
+                      setAdded(false);
+                      setError("");
+                      if (value) setDatesOpen(false);
+                    }}
+                  />
+                )}
+                <div className="flex items-center justify-between gap-3 border-t p-3">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={busy}
+                    onClick={() => {
+                      setStay(undefined);
+                      setActivityDate(undefined);
+                      setAdded(false);
+                      setError("");
+                    }}
+                  >
+                    Clear dates
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={
+                      busy || (hotel ? !stay?.from || !stay?.to : !activityDate)
+                    }
+                    onClick={() => setDatesOpen(false)}
+                  >
+                    Done
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
+            <p
+              id="booking-dates-hint"
+              className="text-xs text-muted-foreground"
+            >
+              {hotel
+                ? "Select check-in first, then check-out. Minimum one night."
+                : "Choose the date for your experience."}
+            </p>
+          </div>
+          {!hotel && (
             <>
-              <div className="space-y-2">
-                <Label htmlFor="date">Activity date</Label>
-                <Input
-                  id="date"
-                  name="date"
-                  type="date"
-                  min={today()}
-                  required
-                  disabled={busy}
-                />
-              </div>
               <div className="space-y-2">
                 <Label htmlFor="slot">Time slot</Label>
                 <Select
@@ -307,6 +412,7 @@ export default function ProductDetailsPage() {
               <ProductImage
                 name={p.name}
                 content={c}
+                priority
                 className="mb-7 aspect-[16/10] rounded-xl"
               />
               {content.error && (

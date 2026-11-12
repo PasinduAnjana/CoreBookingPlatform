@@ -1,5 +1,6 @@
-﻿
+
 using AbcMockApi.Models;
+using AbcMockApi.Services;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AbcMockApi.Controllers
@@ -8,69 +9,16 @@ namespace AbcMockApi.Controllers
     [Route("api/hotels/bookings")]
     public class HotelBookingsController : ControllerBase
     {
-        private static readonly object Sync = new();
+        private readonly HotelMockData _data;
 
-        private static readonly Dictionary<string, HotelBooking>
-            Bookings = new();
-
-        private static readonly Dictionary<string, string>
-            IdempotencyKeys = new();
-
-        private static int GetBaseInventory(string roomCode)
+        public HotelBookingsController(HotelMockData data)
         {
-            return roomCode.ToUpperInvariant() switch
-            {
-                "STD" => 5,
-                "DLX" => 2,
-                "SUITE" => 1,
-                _ => 0
-            };
+            _data = data;
         }
 
-        private static decimal GetNightlyRate(string roomCode)
-        {
-            return roomCode.ToUpperInvariant() switch
-            {
-                "STD" => 12000m,
-                "DLX" => 18000m,
-                "SUITE" => 30000m,
-                _ => 0m
-            };
-        }
-
-        private static int GetAvailableRooms(
-            string hotelCode,
-            string roomCode,
-            DateOnly checkIn,
-            DateOnly checkOut)
-        {
-            var overlappingBookings = Bookings.Values
-                .Where(b =>
-                    b.Status == "Confirmed" &&
-                    b.HotelCode == hotelCode &&
-                    b.RoomCode == roomCode &&
-                    b.CheckIn < checkOut &&
-                    b.CheckOut > checkIn)
-                .ToList();
-
-            int maximumUsed = 0;
-
-            for (var date = checkIn;
-                 date < checkOut;
-                 date = date.AddDays(1))
-            {
-                int used = overlappingBookings
-                    .Where(b => b.CheckIn <= date &&
-                                b.CheckOut > date)
-                    .Sum(b => b.Rooms);
-
-                maximumUsed = Math.Max(maximumUsed, used);
-            }
-
-            return Math.Max(
-                0,
-                GetBaseInventory(roomCode) - maximumUsed);
-        }
+        private object Sync => _data.Sync;
+        private Dictionary<string, HotelBooking> Bookings => _data.Bookings;
+        private Dictionary<string, string> IdempotencyKeys => _data.IdempotencyKeys;
 
         [HttpPost]
         public IActionResult CreateBooking(
@@ -93,7 +41,7 @@ namespace AbcMockApi.Controllers
                     return Ok(existing);
                 }
 
-                var hotel = HotelsController.Hotels.FirstOrDefault(
+                var hotel = _data.Hotels.FirstOrDefault(
                     h => h.HotelCode.Equals(
                         request.HotelCode,
                         StringComparison.OrdinalIgnoreCase));
@@ -125,7 +73,7 @@ namespace AbcMockApi.Controllers
                     return BadRequest("Invalid guests or room count.");
                 }
 
-                int available = GetAvailableRooms(
+                int available = _data.GetRemainingRooms(
                     hotel.HotelCode,
                     room.RoomCode,
                     request.CheckIn,
@@ -156,7 +104,8 @@ namespace AbcMockApi.Controllers
                     Rooms = request.Rooms,
                     GuestName = request.GuestName,
 
-                    TotalAmount = GetNightlyRate(room.RoomCode)* nights * request.Rooms
+                    Currency = _data.Currency,
+                    TotalAmount = _data.GetNightlyRate(room.RoomCode)* nights * request.Rooms
                 };
 
                 Bookings[booking.BookingId] = booking;
@@ -216,22 +165,6 @@ namespace AbcMockApi.Controllers
                 booking.Status = "Cancelled";
 
                 return Ok(booking);
-            }
-        }
-
-        internal static int GetRemainingRooms(
-            string hotelCode,
-            string roomCode,
-            DateOnly checkIn,
-            DateOnly checkOut)
-        {
-            lock (Sync)
-            {
-                return GetAvailableRooms(
-                    hotelCode,
-                    roomCode,
-                    checkIn,
-                    checkOut);
             }
         }
 

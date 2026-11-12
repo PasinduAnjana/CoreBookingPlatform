@@ -1,0 +1,39 @@
+{
+  "currencyCode": "LKR",
+  "activities": [
+    {
+      "activityId": "CDE-A101",
+      "title": "Colombo City Walking Tour",
+      "destination": "Colombo",
+      "durationMinutes": 180,
+      "timeSlots": ["09:00", "14:00"],
+      "overview": "Explore the historic landmarks of Colombo.",
+      "gallery": ["https://images.pexels.com/photos/9584386/pexels-photo-9584386.jpeg?auto=compress&cs=tinysrgb&w=600"],
+      "includes": ["Tour guide", "Drinking water"],
+      "excludes": ["Meals", "Transport"],
+      "packages": [
+        { "packageId": "MORNING", "label": "Morning Group Tour", "maxParticipants": 15, "passengerTypes": ["Adult", "Child"] },
+        { "packageId": "PRIVATE", "label": "Private Tour", "maxParticipants": 6, "passengerTypes": ["Adult", "Child"] }
+      ]
+    },
+    {
+      "activityId": "CDE-A102",
+      "title": "Kandy Cultural Experience",
+      "destination": "Kandy",
+      "durationMinutes": 240,
+      "timeSlots": ["09:00", "14:00"],
+      "overview": "Experience traditional Kandyan culture.",
+      "gallery": ["https://images.pexels.com/photos/20836970/pexels-photo-20836970.jpeg?auto=compress&cs=tinysrgb&w=600"],
+      "includes": ["Guide", "Entry tickets"],
+      "excludes": ["Hotel pickup"],
+      "packages": [
+        { "packageId": "STANDARD", "label": "Standard Experience", "maxParticipants": 20, "passengerTypes": ["Adult", "Child"] }
+      ]
+    }
+  ],
+  "packages": {
+    "MORNING": { "inventory": 8, "adultRate": 5000, "childRate": 2500 },
+    "PRIVATE": { "inventory": 6, "adultRate": 12000, "childRate": 6000 },
+    "STANDARD": { "inventory": 12, "adultRate": 7000, "childRate": 3500 }
+  }
+}

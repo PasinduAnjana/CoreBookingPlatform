@@ -97,10 +97,12 @@ export function ProductImage({
   content,
   name,
   className = "",
+  priority = false,
 }: {
   content?: Content | null;
   name: string;
   className?: string;
+  priority?: boolean;
 }) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
   const url =
@@ -113,7 +115,8 @@ export function ProductImage({
           className="size-full object-cover"
           src={url}
           alt={name}
-          loading="lazy"
+          loading={priority ? "eager" : "lazy"}
+          fetchPriority={priority ? "high" : "auto"}
           onError={() => setFailedUrl(url)}
         />
       ) : (
