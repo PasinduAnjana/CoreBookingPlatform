@@ -32,6 +32,7 @@ interface CartState {
   refresh: () => Promise<Cart | null>;
   release: () => void;
   remove: (id: number) => Promise<void>;
+  update: (id: number, item: Selection) => Promise<void>;
 }
 const Context = createContext<CartState | null>(null);
 export function CartProvider({ children }: { children: ReactNode }) {
@@ -89,8 +90,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
       await refresh();
     }
   }
+  async function update(itemId: number, selection: Selection) {
+    const id = idRef.current;
+    if (!id) throw new Error("No active cart");
+    const updated = await carts.update(id, itemId, selection);
+    if (idRef.current === id) setCart(updated);
+  }
   return (
-    <Context.Provider value={{ cartId, cart, add, refresh, release, remove }}>
+    <Context.Provider
+      value={{ cartId, cart, add, refresh, release, remove, update }}
+    >
       {children}
     </Context.Provider>
   );
@@ -101,4 +110,3 @@ export function useCart() {
   if (!value) throw new Error("CartProvider missing");
   return value;
 }
-

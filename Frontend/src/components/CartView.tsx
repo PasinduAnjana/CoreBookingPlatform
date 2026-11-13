@@ -10,6 +10,7 @@ import { Loading, Empty, ErrorState, Status } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { CartItemEditor } from "@/components/CartItemEditor";
 import { money } from "@/lib/utils";
 import { errorMessage } from "@/lib/api";
 import { attributes, type Cart, type Quote } from "@/types";
@@ -111,15 +112,25 @@ export function CartView({
                     </p>
                   </div>
                   {!checkout && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label={`Remove ${p?.name || "item"}`}
-                      disabled={removing !== null}
-                      onClick={() => remove(item.id)}
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
+                    <div className="flex shrink-0 items-center gap-1">
+                      {p && (
+                        <CartItemEditor
+                          item={item}
+                          product={p}
+                          disabled={removing !== null}
+                          onSaved={result.reload}
+                        />
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Remove ${p?.name || "item"}`}
+                        disabled={removing !== null}
+                        onClick={() => remove(item.id)}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
                   )}
                 </div>
                 <div className="my-4 space-y-2 text-sm text-muted-foreground">
@@ -217,4 +228,3 @@ export function CartView({
     </div>
   );
 }
-

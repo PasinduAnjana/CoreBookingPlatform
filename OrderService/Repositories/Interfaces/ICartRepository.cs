@@ -7,6 +7,8 @@ namespace OrderService.Repositories.Interfaces
     {
         Task<Cart?> GetByIdAsync(Guid cartId);
 
+        Task<bool> HasOrderAsync(Guid cartId, CancellationToken cancellationToken = default);
+
         Task AddAsync(Cart cart);
 
         void RemoveItem(CartItem item);

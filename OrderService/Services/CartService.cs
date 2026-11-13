@@ -99,6 +99,40 @@ namespace OrderService.Services
             return ToDto(cart);
         }
 
+        public async Task<CartDto?> UpdateItemAsync(
+            Guid cartId,
+            int itemId,
+            AddCartItemDto dto,
+            CancellationToken cancellationToken = default)
+        {
+            var cart = await _repository.GetByIdAsync(cartId);
+            var item = cart?.Items.FirstOrDefault(i => i.Id == itemId);
+            if (cart == null || item == null)
+                return null;
+
+            if (await _repository.HasOrderAsync(cartId, cancellationToken))
+                throw new InvalidOperationException("This cart has already been checked out and cannot be edited.");
+
+            if (dto.ProductId != item.ProductId)
+                throw new ArgumentException("An edit cannot change the product. Add a new selection instead.");
+
+            // Validate before changing the tracked item so rejected edits leave it intact.
+            ValidateBookingSelection(dto);
+            await ValidateProductAsync(dto, cancellationToken);
+
+            item.SupplierOptionId = dto.SupplierOptionId;
+            item.CheckIn = dto.CheckIn;
+            item.CheckOut = dto.CheckOut;
+            item.ActivityDate = dto.ActivityDate;
+            item.TimeSlot = dto.TimeSlot;
+            item.Adults = dto.Adults;
+            item.Children = dto.Children;
+            item.Rooms = dto.Rooms;
+
+            await _repository.SaveChangesAsync();
+            return ToDto(cart);
+        }
+
         public async Task<bool> RemoveItemAsync(
             Guid cartId,
             int itemId)
@@ -130,7 +164,7 @@ namespace OrderService.Services
             }
 
             if (dto.Adults < 0 || dto.Children < 0 ||
-                dto.Adults + dto.Children < 1 ||
+                (long)dto.Adults + dto.Children < 1 ||
                 dto.Rooms < 1)
             {
                 throw new ArgumentException(
@@ -173,9 +207,10 @@ namespace OrderService.Services
         }
 
 
-        private async Task<ProductLookupDto> ValidateProductAsync(AddCartItemDto dto)
+        private async Task<ProductLookupDto> ValidateProductAsync(
+            AddCartItemDto dto, CancellationToken cancellationToken = default)
         {
-            var product = await _productClient.GetProductAsync(dto.ProductId);
+            var product = await _productClient.GetProductAsync(dto.ProductId, cancellationToken);
 
             if (product == null)
                 throw new ArgumentException("Product does not exist.");
@@ -205,27 +240,78 @@ namespace OrderService.Services
             if (string.IsNullOrWhiteSpace(product.AttributesJson))
                 throw new ArgumentException("Product has no options.");
 
-            using var document = JsonDocument.Parse(product.AttributesJson);
+            JsonDocument document;
+            try
+            {
+                document = JsonDocument.Parse(product.AttributesJson);
+            }
+            catch (JsonException)
+            {
+                throw new ArgumentException("Product options are invalid.");
+            }
+
+            using var parsedOptions = document;
 
             var root = document.RootElement;
 
-            if (!root.TryGetProperty("options", out var options) ||
+            if (root.ValueKind != JsonValueKind.Object ||
+                !root.TryGetProperty("options", out var options) ||
                 options.ValueKind != JsonValueKind.Array)
             {
                 throw new ArgumentException(
                     "Product options are missing.");
             }
 
-            bool optionExists = options.EnumerateArray().Any(option =>
+            var selectedOption = options.EnumerateArray().FirstOrDefault(option =>
                 option.ValueKind == JsonValueKind.Object &&
                 (option.TryGetProperty("supplierOptionId", out var id) ||
                  (supplier == "CDE" && option.TryGetProperty("supplierPackageId", out id))) &&
                 id.ValueKind == JsonValueKind.String &&
                 id.GetString() == dto.SupplierOptionId);
 
-            if (!optionExists)
+            if (selectedOption.ValueKind != JsonValueKind.Object)
                 throw new ArgumentException(
                     "Selected option does not exist.");
+
+            static int? Limit(JsonElement option, string property)
+            {
+                if (!option.TryGetProperty(property, out var value)) return null;
+                if (value.ValueKind != JsonValueKind.Number || !value.TryGetInt32(out var limit) || limit < 0)
+                    throw new ArgumentException("Product capacity limits are invalid.");
+                return limit;
+            }
+
+            if (supplier == "ABC")
+            {
+                var maxAdults = Limit(selectedOption, "maxAdults");
+                var maxChildren = Limit(selectedOption, "maxChildren");
+                if ((maxAdults.HasValue && dto.Adults > (long)maxAdults.Value * dto.Rooms) ||
+                    (maxChildren.HasValue && dto.Children > (long)maxChildren.Value * dto.Rooms))
+                    throw new ArgumentException("The selected guests exceed this room's occupancy limits.");
+            }
+            else
+            {
+                if (!root.TryGetProperty("timeSlots", out var slots) ||
+                    slots.ValueKind != JsonValueKind.Array ||
+                    !slots.EnumerateArray().Any(s => s.ValueKind == JsonValueKind.String && s.GetString() == dto.TimeSlot))
+                    throw new ArgumentException("Select a supported activity time slot.");
+
+                var maxParticipants = Limit(selectedOption, "maxParticipants");
+                if (maxParticipants.HasValue && (long)dto.Adults + dto.Children > maxParticipants.Value)
+                    throw new ArgumentException("The selected participants exceed this package's capacity.");
+
+                if (!selectedOption.TryGetProperty("passengerTypes", out var passengerTypes) ||
+                    passengerTypes.ValueKind != JsonValueKind.Array)
+                    throw new ArgumentException("Package passenger types are missing.");
+
+                var supportedTypes = passengerTypes.EnumerateArray()
+                    .Where(p => p.ValueKind == JsonValueKind.String)
+                    .Select(p => p.GetString())
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+                if ((dto.Adults > 0 && !supportedTypes.Contains("Adult")) ||
+                    (dto.Children > 0 && !supportedTypes.Contains("Child")))
+                    throw new ArgumentException("The package does not support this participant selection.");
+            }
 
             return product;
         }

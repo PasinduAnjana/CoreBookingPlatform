@@ -59,6 +59,36 @@ namespace OrderService.Controllers
             }
         }
 
+        [HttpPut("{cartId:guid}/items/{itemId:int}")]
+        public async Task<IActionResult> UpdateItem(
+            Guid cartId,
+            int itemId,
+            [FromBody] AddCartItemDto dto,
+            CancellationToken cancellationToken)
+        {
+            try
+            {
+                var cart = await _service.UpdateItemAsync(cartId, itemId, dto, cancellationToken);
+                return cart == null ? NotFound("Cart or item not found.") : Ok(cart);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(ex.Message);
+            }
+            catch (HttpRequestException)
+            {
+                return StatusCode(502, "Unable to validate the product selection.");
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                return StatusCode(504, "Product validation timed out.");
+            }
+        }
+
         [HttpDelete("{cartId:guid}/items/{itemId:int}")]
         public async Task<IActionResult> RemoveItem(
             Guid cartId,

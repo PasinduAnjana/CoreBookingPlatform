@@ -26,6 +26,11 @@ namespace OrderService.Repositories
             await _context.Carts.AddAsync(cart);
         }
 
+        public Task<bool> HasOrderAsync(Guid cartId, CancellationToken cancellationToken = default)
+        {
+            return _context.Orders.AnyAsync(o => o.CartId == cartId, cancellationToken);
+        }
+
         public void RemoveItem(CartItem item)
         {
             _context.CartItems.Remove(item);

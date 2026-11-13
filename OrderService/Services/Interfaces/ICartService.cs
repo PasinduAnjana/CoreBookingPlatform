@@ -11,6 +11,9 @@ namespace OrderService.Services.Interfaces
 
         Task<CartDto?> AddItemAsync(Guid cartId,AddCartItemDto dto);
 
+        Task<CartDto?> UpdateItemAsync(Guid cartId, int itemId, AddCartItemDto dto,
+            CancellationToken cancellationToken = default);
+
         Task<bool> RemoveItemAsync(Guid cartId,int itemId);
         Task<CartQuoteDto?> GetCartQuoteAsync(Guid cartId, CancellationToken cancellationToken = default);
     }

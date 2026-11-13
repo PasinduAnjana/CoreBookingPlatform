@@ -19,7 +19,7 @@ All React API calls go exclusively through Ocelot. The gateway allows the localh
 
 - `/`: active products with hotel/activity filters, supplier images and content.
 - `/products/:id`: details, room/package selection, occupancy validation and dates. Activity time slots are read from imported attributes.
-- `/cart`: mixed supplier selections, removal and fresh live quotes.
+- `/cart`: mixed supplier selections, editing/removal and fresh live quotes. Edit reuses the booking form with existing values, saves through PUT, and refreshes prices and availability. Hotels keep the two-month popup calendar.
 - `/checkout`: latest quote, customer name and supplier booking confirmation.
 - `/orders/:orderId`: order and supplier booking statuses/references, cancellation and retry.
 - `/bookings`: recent order references on this browser and manual order lookup.
@@ -37,7 +37,8 @@ Manual acceptance flow (requires running services and SQL Server):
 3. Open the cart, confirm both items have live availability and prices, and refresh the quote.
 4. Continue to checkout, enter a name, confirm once, and verify the returned order and both supplier confirmations.
 5. Reload the order page, cancel through the confirmation dialog, and verify every booking status.
-6. Test removal, empty cart, missing references, supplier outages and unavailable inventory. Confirm unavailable/mixed-currency quotes block checkout.
+6. Edit hotel dates/options/occupancy and activity packages/dates/time slots/participants. Verify existing values are prefilled, Cancel leaves the cart unchanged, invalid edits retain the original item, and saving refreshes the quote without adding another item.
+7. Test removal, empty cart, missing references, supplier outages and unavailable inventory. Confirm unavailable/mixed-currency quotes block checkout.
 
 ## Small backend integration changes
 
@@ -47,7 +48,7 @@ Manual acceptance flow (requires running services and SQL Server):
 
 ## Current backend limitations
 
-- No cart-item update endpoint: remove an item and add a revised selection.
+- Editing preserves the cart item and product IDs; choosing a different product requires a new selection. Checked-out carts reject edits.
 - No customer accounts: customer order lookup uses locally saved references. Management uses the paginated order-list API.
 - Order responses contain supplier booking summaries, not the original dates/guest selections. Those are displayed during cart/checkout only.
 - Uncertain bookings require backend/operator reconciliation; the UI refreshes their actual status and does not claim automatic recovery.

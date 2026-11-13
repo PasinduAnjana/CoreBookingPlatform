@@ -65,6 +65,7 @@
       "UpstreamHttpMethod": [
         "GET",
         "POST",
+        "PUT",
         "DELETE"
       ],
       "DownstreamPathTemplate": "/api/carts/{everything}",

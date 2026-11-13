@@ -13,6 +13,10 @@ export const carts = {
   async remove(id: string, item: number) {
     await api.delete(`/api/carts/${id}/items/${item}`);
   },
+  async update(id: string, item: number, selection: Selection) {
+    return (await api.put<Cart>(`/api/carts/${id}/items/${item}`, selection))
+      .data;
+  },
   async quote(id: string) {
     return (await api.get<Quote>(`/api/carts/${id}/quote`)).data;
   },
