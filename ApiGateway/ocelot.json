@@ -8,6 +8,7 @@
         "DELETE"
       ],
       "DownstreamPathTemplate": "/api/products/{productId}/content",
+      "SwaggerKey": "products",
       "DownstreamScheme": "https",
       "DownstreamHostAndPorts": [
         {
@@ -22,6 +23,7 @@
         "GET"
       ],
       "DownstreamPathTemplate": "/api/product",
+      "SwaggerKey": "products",
       "DownstreamScheme": "https",
       "DownstreamHostAndPorts": [
         {
@@ -38,6 +40,7 @@
         "PATCH"
       ],
       "DownstreamPathTemplate": "/api/product/{everything}",
+      "SwaggerKey": "products",
       "DownstreamScheme": "https",
       "DownstreamHostAndPorts": [
         {
@@ -52,6 +55,7 @@
         "POST"
       ],
       "DownstreamPathTemplate": "/api/carts",
+      "SwaggerKey": "orders",
       "DownstreamScheme": "https",
       "DownstreamHostAndPorts": [
         {
@@ -69,6 +73,7 @@
         "DELETE"
       ],
       "DownstreamPathTemplate": "/api/carts/{everything}",
+      "SwaggerKey": "orders",
       "DownstreamScheme": "https",
       "DownstreamHostAndPorts": [
         {
@@ -86,6 +91,7 @@
         "DELETE"
       ],
       "DownstreamPathTemplate": "/api/category/{everything}",
+      "SwaggerKey": "products",
       "DownstreamScheme": "https",
       "DownstreamHostAndPorts": [
         {
@@ -100,6 +106,7 @@
         "GET"
       ],
       "DownstreamPathTemplate": "/api/supplier/{everything}",
+      "SwaggerKey": "products",
       "DownstreamScheme": "https",
       "DownstreamHostAndPorts": [
         {
@@ -115,6 +122,7 @@
         "POST"
       ],
       "DownstreamPathTemplate": "/api/orders/{everything}",
+      "SwaggerKey": "orders",
       "DownstreamScheme": "https",
       "DownstreamHostAndPorts": [
         {
@@ -130,6 +138,7 @@
       ],
       "DownstreamScheme": "https",
       "DownstreamPathTemplate": "/api/category",
+      "SwaggerKey": "products",
       "DownstreamHostAndPorts": [
         {
           "Host": "localhost",
@@ -144,6 +153,7 @@
       ],
       "DownstreamScheme": "https",
       "DownstreamPathTemplate": "/api/orders",
+      "SwaggerKey": "orders",
       "DownstreamHostAndPorts": [
         {
           "Host": "localhost",
@@ -158,6 +168,7 @@
       ],
       "DownstreamScheme": "https",
       "DownstreamPathTemplate": "/api/integration/import/{supplierCode}",
+      "SwaggerKey": "integration",
       "DownstreamHostAndPorts": [
         {
           "Host": "localhost",
@@ -165,6 +176,38 @@
         }
       ],
       "UpstreamPathTemplate": "/api/integration/import/{supplierCode}"
+    }
+  ],
+  "SwaggerEndPoints": [
+    {
+      "Key": "products",
+      "Config": [
+        {
+          "Name": "Product Service",
+          "Version": "v1",
+          "Url": "https://localhost:7128/openapi/v1.json"
+        }
+      ]
+    },
+    {
+      "Key": "orders",
+      "Config": [
+        {
+          "Name": "Order Service",
+          "Version": "v1",
+          "Url": "https://localhost:7022/openapi/v1.json"
+        }
+      ]
+    },
+    {
+      "Key": "integration",
+      "Config": [
+        {
+          "Name": "Integration Service",
+          "Version": "v1",
+          "Url": "https://localhost:7098/openapi/v1.json"
+        }
+      ]
     }
   ],
   "GlobalConfiguration": {

@@ -135,6 +135,16 @@ The following routes are available through Ocelot at `http://localhost:8084` in 
 
 Catalog routes use singular `/api/product`; content routes use plural `/api/products`.
 
+### Gateway Swagger UI
+
+Open [gateway Swagger in Docker](http://localhost:8084/swagger), or `https://localhost:7000/swagger` when running the gateway's local HTTPS profile. The gateway hosts one Swagger UI with **Product Service**, **Order Service**, and **Integration Service** available in the definition dropdown.
+
+The gateway uses [MMLib.SwaggerForOcelot](https://github.com/Burgyn/MMLib.SwaggerForOcelot) 11.0.0 to fetch each service's `/openapi/v1.json`, filter it using the Ocelot routes and their `SwaggerKey`, and rewrite the server URL so **Try it out** sends requests through the gateway. Internal service-only routes and the mock supplier APIs remain documented at their own Swagger pages.
+
+Swagger is enabled in Development, as are the downstream OpenAPI documents. All three core services must be running for their documents to load. Local configuration uses the service HTTPS URLs; Docker configuration uses Compose service names on port 8080. The existing `OcelotConfigFile` setting selects both the routes and matching Swagger endpoints.
+
+After changing gateway code or its package dependencies, rebuild the Docker gateway with `docker compose up -d --build api-gateway`. No database migration is required for documentation changes.
+
 ### Cart, quote, checkout, and cancellation
 
 | Method | Route | Purpose |
@@ -275,7 +285,7 @@ All published ports bind to `127.0.0.1` in the supplied Compose file.
 | Component | Host address | Container port |
 | --- | --- | --- |
 | Frontend | [http://localhost:3000](http://localhost:3000) | 80 |
-| API gateway | [http://localhost:8084](http://localhost:8084) | 8080 |
+| API gateway Swagger | [http://localhost:8084/swagger](http://localhost:8084/swagger) | 8080 |
 | ProductService Swagger | [http://localhost:8081/swagger](http://localhost:8081/swagger) | 8080 |
 | IntegrationService Swagger | [http://localhost:8082/swagger](http://localhost:8082/swagger) | 8080 |
 | OrderService Swagger | [http://localhost:8083/swagger](http://localhost:8083/swagger) | 8080 |

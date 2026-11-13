@@ -4,6 +4,7 @@
       "UpstreamPathTemplate": "/api/products/{productId}/content",
       "UpstreamHttpMethod": ["GET", "PUT", "DELETE"],
       "DownstreamPathTemplate": "/api/products/{productId}/content",
+      "SwaggerKey": "products",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -16,6 +17,7 @@
       "UpstreamPathTemplate": "/api/product",
       "UpstreamHttpMethod": ["GET"],
       "DownstreamPathTemplate": "/api/product",
+      "SwaggerKey": "products",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -28,6 +30,7 @@
       "UpstreamPathTemplate": "/api/product/{everything}",
       "UpstreamHttpMethod": ["GET", "PUT", "PATCH"],
       "DownstreamPathTemplate": "/api/product/{everything}",
+      "SwaggerKey": "products",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -40,6 +43,7 @@
       "UpstreamPathTemplate": "/api/carts",
       "UpstreamHttpMethod": ["POST"],
       "DownstreamPathTemplate": "/api/carts",
+      "SwaggerKey": "orders",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -52,6 +56,7 @@
       "UpstreamPathTemplate": "/api/carts/{everything}",
       "UpstreamHttpMethod": ["GET", "POST", "PUT", "DELETE"],
       "DownstreamPathTemplate": "/api/carts/{everything}",
+      "SwaggerKey": "orders",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -64,6 +69,7 @@
       "UpstreamPathTemplate": "/api/category/{everything}",
       "UpstreamHttpMethod": ["GET", "POST", "PUT", "DELETE"],
       "DownstreamPathTemplate": "/api/category/{everything}",
+      "SwaggerKey": "products",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -76,6 +82,7 @@
       "UpstreamPathTemplate": "/api/supplier/{everything}",
       "UpstreamHttpMethod": ["GET"],
       "DownstreamPathTemplate": "/api/supplier/{everything}",
+      "SwaggerKey": "products",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -88,6 +95,7 @@
       "UpstreamPathTemplate": "/api/orders/{everything}",
       "UpstreamHttpMethod": ["GET", "POST"],
       "DownstreamPathTemplate": "/api/orders/{everything}",
+      "SwaggerKey": "orders",
       "DownstreamScheme": "http",
       "DownstreamHostAndPorts": [
         {
@@ -100,6 +108,7 @@
       "UpstreamHttpMethod": ["GET", "POST"],
       "DownstreamScheme": "http",
       "DownstreamPathTemplate": "/api/category",
+      "SwaggerKey": "products",
       "DownstreamHostAndPorts": [
         {
           "Host": "product-service",
@@ -112,6 +121,7 @@
       "UpstreamHttpMethod": ["GET"],
       "DownstreamScheme": "http",
       "DownstreamPathTemplate": "/api/orders",
+      "SwaggerKey": "orders",
       "DownstreamHostAndPorts": [
         {
           "Host": "order-service",
@@ -124,6 +134,7 @@
       "UpstreamHttpMethod": ["POST"],
       "DownstreamScheme": "http",
       "DownstreamPathTemplate": "/api/integration/import/{supplierCode}",
+      "SwaggerKey": "integration",
       "DownstreamHostAndPorts": [
         {
           "Host": "integration-service",
@@ -131,6 +142,38 @@
         }
       ],
       "UpstreamPathTemplate": "/api/integration/import/{supplierCode}"
+    }
+  ],
+  "SwaggerEndPoints": [
+    {
+      "Key": "products",
+      "Config": [
+        {
+          "Name": "Product Service",
+          "Version": "v1",
+          "Url": "http://product-service:8080/openapi/v1.json"
+        }
+      ]
+    },
+    {
+      "Key": "orders",
+      "Config": [
+        {
+          "Name": "Order Service",
+          "Version": "v1",
+          "Url": "http://order-service:8080/openapi/v1.json"
+        }
+      ]
+    },
+    {
+      "Key": "integration",
+      "Config": [
+        {
+          "Name": "Integration Service",
+          "Version": "v1",
+          "Url": "http://integration-service:8080/openapi/v1.json"
+        }
+      ]
     }
   ],
   "GlobalConfiguration": {

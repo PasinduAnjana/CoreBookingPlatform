@@ -127,6 +127,7 @@ services:
     depends_on:
       - product-service
       - order-service
+      - integration-service
   frontend:
     build:
       context: .

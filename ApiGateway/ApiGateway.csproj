@@ -9,8 +9,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="MMLib.SwaggerForOcelot" Version="11.0.0" />
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.24.2-preview.1" />
     <PackageReference Include="Ocelot" Version="25.0.2" />
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.14" />
   </ItemGroup>
 
 <ItemGroup>
