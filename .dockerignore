@@ -1,0 +1,19 @@
+
+**/bin/
+**/obj/
+**/.vs/
+**/node_modules/
+**/dist/
+.git/
+# Local environment configuration and secrets (keep shareable templates)
+**/.env
+**/.env.*
+!**/.env.example
+**/secrets.json
+
+# Generated artifacts, logs and personal IDE settings
+**/artifacts/
+**/*.log
+**/*.user
+**/*.suo
+**/*.pfx

@@ -1,13 +1,13 @@
 import axios from "axios";
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || "https://localhost:7000",
+  baseURL: import.meta.env.VITE_API_BASE_URL ?? "https://localhost:7000",
   timeout: 60000,
 });
 export function errorMessage(error: unknown): string {
   if (!axios.isAxiosError(error))
     return "Something went wrong. Please try again.";
   if (!error.response)
-    return "Cannot reach Core Booking. Check that the gateway is running and its HTTPS certificate is trusted.";
+    return "Cannot connect to Core Booking. Please check that the application services are running.";
   const status = error.response.status;
   const data = error.response.data;
   // Only surface short validation text. Server exceptions and stack traces stay hidden.

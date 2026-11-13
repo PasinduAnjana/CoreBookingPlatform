@@ -39,7 +39,6 @@ namespace AbcMockApi.Models
         public string Currency { get; set; } = string.Empty;
 
         public decimal TotalAmount { get; set; }
-        public DateTimeOffset CreatedAt { get; set; }
-            = DateTimeOffset.UtcNow;
+        public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     }
 }

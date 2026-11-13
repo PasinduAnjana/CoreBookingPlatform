@@ -4,10 +4,14 @@ using Ocelot.Middleware;
 var builder = WebApplication.CreateBuilder(args);
 
 // Load gateway routes
+var configFile = builder.Configuration["OcelotConfigFile"]
+                 ?? "ocelot.json";
+
 builder.Configuration.AddJsonFile(
-    "ocelot.json",
+    configFile,
     optional: false,
     reloadOnChange: true);
+
 
 // Register Ocelot services
 builder.Services.AddOcelot(builder.Configuration);

@@ -1,0 +1,146 @@
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: booking-sqlserver
+
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
+      MSSQL_PID: Developer
+
+    ports:
+      - "127.0.0.1:14333:1433"
+
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+
+  product-service:
+    build:
+      context: .
+      dockerfile: ProductService/Dockerfile
+
+    container_name: booking-product-service
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: "8080"
+
+      ConnectionStrings__DefaultConnection: "Server=sqlserver,1433;Database=ProductDB;User Id=sa;Password=${MSSQL_SA_PASSWORD};Encrypt=True;TrustServerCertificate=True;"
+
+    ports:
+      - "127.0.0.1:8081:8080"
+
+    depends_on:
+      - sqlserver
+
+  abc-mock:
+    build:
+      context: .
+      dockerfile: AbcMockApi/Dockerfile
+
+    container_name: booking-abc-mock
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: "8080"
+
+    ports:
+      - "127.0.0.1:5101:8080"
+
+  cde-mock:
+    build:
+      context: .
+      dockerfile: CdeMockApi/Dockerfile
+
+    container_name: booking-cde-mock
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: "8080"
+
+    ports:
+      - "127.0.0.1:5102:8080"
+
+  integration-service:
+    build:
+      context: .
+      dockerfile: IntegrationService/Dockerfile
+
+    container_name: booking-integration-service
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: "8080"
+
+      # Replace these keys with the exact keys in Program.cs
+      SupplierApis__ABC: "http://abc-mock:8080/"
+      SupplierApis__CDE: "http://cde-mock:8080/"
+      ProductService__BaseUrl: "http://product-service:8080/"
+
+    ports:
+      - "127.0.0.1:8082:8080"
+
+    depends_on:
+      - abc-mock
+      - cde-mock
+      - product-service
+
+  order-service:
+    build:
+      context: .
+      dockerfile: OrderService/Dockerfile
+
+    container_name: booking-order-service
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: "8080"
+
+      ConnectionStrings__DefaultConnection: "Server=sqlserver,1433;Database=OrderDB;User Id=sa;Password=${MSSQL_SA_PASSWORD};Encrypt=True;TrustServerCertificate=True;"
+
+      Services__ProductService: "http://product-service:8080/"
+      Services__IntegrationService: "http://integration-service:8080/"
+
+    ports:
+      - "127.0.0.1:8083:8080"
+
+    depends_on:
+      - sqlserver
+      - product-service
+      - integration-service
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: ApiGateway/Dockerfile
+
+    container_name: booking-api-gateway
+
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_HTTP_PORTS: "8080"
+      OcelotConfigFile: "ocelot.Docker.json"
+
+    ports:
+      - "127.0.0.1:8084:8080"
+
+    depends_on:
+      - product-service
+      - order-service
+  frontend:
+    build:
+      context: .
+      dockerfile: Frontend/Dockerfile
+      args:
+        VITE_API_BASE_URL: ""
+
+    container_name: booking-frontend
+
+    ports:
+      - "127.0.0.1:3000:80"
+
+    depends_on:
+      - api-gateway
+
+volumes:
+  sqlserver_data:

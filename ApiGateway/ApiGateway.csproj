@@ -10,4 +10,11 @@
     <PackageReference Include="Ocelot" Version="25.0.2" />
   </ItemGroup>
 
+<ItemGroup>
+  <Content Update="ocelot.Docker.json"
+           CopyToOutputDirectory="PreserveNewest"
+           CopyToPublishDirectory="PreserveNewest" />
+</ItemGroup>
+
+
 </Project>
