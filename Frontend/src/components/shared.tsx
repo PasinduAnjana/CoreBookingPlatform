@@ -20,7 +20,7 @@ export function PageHeading({
   return (
     <div className="mb-8">
       <p className="mb-3 text-xs font-semibold uppercase tracking-[.18em] text-primary">
-        {eyebrow || "Core Booking"}
+        {eyebrow || "TripSync"}
       </p>
       <h1>{title}</h1>
       {children && (

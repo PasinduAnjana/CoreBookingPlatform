@@ -55,7 +55,7 @@ function Layout() {
             <span className="flex size-9 items-center justify-center rounded-xl bg-primary text-white">
               <Compass className="size-5" />
             </span>
-            Core Booking
+            TripSync
           </Link>
           <nav
             aria-label="Main navigation"
@@ -125,7 +125,7 @@ function Layout() {
       </main>
       <footer className="mt-10 border-t bg-white">
         <div className="mx-auto flex max-w-6xl flex-wrap justify-between gap-2 px-5 py-6 text-xs text-muted-foreground sm:px-8">
-          <span className="font-semibold">Core Booking</span>
+          <span className="font-semibold">TripSync</span>
           <span>Stays and experiences, together.</span>
         </div>
       </footer>

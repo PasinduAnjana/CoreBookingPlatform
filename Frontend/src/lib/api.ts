@@ -7,7 +7,7 @@ export function errorMessage(error: unknown): string {
   if (!axios.isAxiosError(error))
     return "Something went wrong. Please try again.";
   if (!error.response)
-    return "Cannot connect to Core Booking. Please check that the application services are running.";
+    return "Cannot connect to TripSync. Please check that the application services are running.";
   const status = error.response.status;
   const data = error.response.data;
   // Only surface short validation text. Server exceptions and stack traces stay hidden.

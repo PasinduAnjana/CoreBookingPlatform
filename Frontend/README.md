@@ -1,4 +1,4 @@
-# Core Booking frontend
+# TripSync frontend
 
 React, TypeScript and Vite frontend for the existing Core Booking Platform. Uses Tailwind CSS, shadcn/ui (Radix), React Router, Axios, Lucide and Sonner.
 
