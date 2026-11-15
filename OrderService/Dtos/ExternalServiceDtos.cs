@@ -6,6 +6,7 @@
         {
             public int Id { get; set; }
             public string Name { get; set; } = string.Empty;
+            public string ProductType { get; set; } = string.Empty;
             public string SupplierCode { get; set; } = string.Empty;
             public string SupplierProductId { get; set; }
                 = string.Empty;

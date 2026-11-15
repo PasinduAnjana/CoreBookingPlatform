@@ -5,6 +5,7 @@ namespace IntegrationService.Models.Common
     public class NormalizedProduct
     {
         public string SupplierCode { get; set; } = string.Empty;
+        public string ProductType { get; set; } = string.Empty;
 
         public string SupplierProductId { get; set; } = string.Empty;
 

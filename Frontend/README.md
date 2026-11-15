@@ -2,6 +2,8 @@
 
 React, TypeScript and Vite frontend for the existing Core Booking Platform. Uses Tailwind CSS, shadcn/ui (Radix), React Router, Axios, Lucide and Sonner.
 
+Management discovers supplier codes and names through `GET /api/integration/suppliers`. Customer filters and the shared booking form use each product's `productType` (`Hotel` or `Activity`), so another supplier using an existing type needs no React changes. Apply the ProductDB `AddProductType` migration before using this version; see the root README for onboarding and upgrade instructions.
+
 ## Setup
 
 1. Install Node.js (a version supported by the installed Vite release).
@@ -21,7 +23,7 @@ All React API calls go exclusively through Ocelot. The gateway allows the localh
 - `/products/:id`: details, room/package selection, occupancy validation and dates. Activity time slots are read from imported attributes.
 - `/cart`: mixed supplier selections, editing/removal and fresh live quotes. Edit reuses the booking form with existing values, saves through PUT, and refreshes prices and availability. Hotels keep the two-month popup calendar.
 - `/checkout`: latest quote, customer name and supplier booking confirmation.
-- `/orders/:orderId`: order and supplier booking statuses/references, cancellation and retry.
+- `/orders/:orderId`: saved stay/activity dates, time slots, guests, rooms, options, supplier references, per-booking currencies, statuses, cancellation and retry.
 - `/bookings`: recent order references on this browser and manual order lookup.
 
 Only IDs are stored locally; cart contents, prices and order statuses are fetched from the backend. Quotes are refreshed on page entry and before checkout by the backend. Checkout handles HTTP 409 order bodies as failed orders and HTTP 202 bodies as unconfirmed orders. Once any order is returned, the active cart is detached because the backend allows one order per cart. A network failure retains the same cart for an idempotent retry.
@@ -50,7 +52,7 @@ Manual acceptance flow (requires running services and SQL Server):
 
 - Editing preserves the cart item and product IDs; choosing a different product requires a new selection. Checked-out carts reject edits.
 - No customer accounts: customer order lookup uses locally saved references. Management uses the paginated order-list API.
-- Order responses contain supplier booking summaries, not the original dates/guest selections. Those are displayed during cart/checkout only.
+- Order details display the saved booking selections. Product/option labels use the current catalog when available; saved supplier references remain visible if catalog labels are unavailable.
 - Uncertain bookings require backend/operator reconciliation; the UI refreshes their actual status and does not claim automatic recovery.
 - Supplier mocks keep bookings in memory and lose inventory reservations on restart.
 - Missing activity time slots require reimport, rather than frontend defaults.
@@ -62,7 +64,7 @@ For a production host, configure SPA fallback to `index.html` for the client rou
 
 - TypeScript check and Vite production build passed.
 - Oxlint passed without warnings.
-- The complete .NET solution builds successfully. A clean rebuild reports existing nullable-reference warnings in ProductService.
+- The complete .NET solution builds successfully with zero warnings and errors.
 - Browser verification against the real local services covered: ABC Deluxe Room selection, CDE Morning Group Tour selection, one mixed cart, live LKR 41,000 quote, successful checkout with two supplier confirmations, cancellation of both mock bookings, order lookup and mobile order layout.
 - The verification order was created as `Frontend verification` and then cancelled. CDE's two existing catalog entries were reimported to populate time slots.
 
@@ -87,7 +89,7 @@ Uses the official shadcn Table, Dialog, AlertDialog, Switch, Textarea, Select, C
 - Category deletion returns HTTP 409 when the category is assigned to products.
 - The gateway forwards the management API routes to their owning services. Imports retain the existing Development-only checks.
 
-Reimport updates supplier-managed catalog fields and overwrites local content. It preserves existing category assignments and active states. The import dialog explains this before a run and displays created, updated and failed counts for each supplier. No arbitrary booking-status editing or order-customer editing is added; the existing cancellation API remains the supported status transition.
+Reimport updates supplier-managed catalog fields and overwrites local content. It preserves existing category assignments and active states. The import dialog explains this before a run and displays created, updated and failed counts for each supplier. Management order details support editing the locally stored customer name with `PUT /api/orders/{orderId}`. Names on supplier reservations remain as originally booked. Booking status changes follow the existing checkout and cancellation workflows.
 
 The management area shares the existing Vite application and runs as a local assignment demonstration. Authentication and user roles are not implemented; this is not a secured administration portal for public deployment.
 

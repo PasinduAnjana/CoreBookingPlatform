@@ -41,6 +41,15 @@ namespace OrderService.Repositories
                 .FirstOrDefaultAsync(o => o.Id == orderId);
         }
 
+        public async Task<bool> UpdateCustomerNameAsync(
+            Guid orderId, string customerName, CancellationToken cancellationToken)
+        {
+            // Update only this field, preserving concurrent booking/status changes.
+            return await _context.Orders.Where(o => o.Id == orderId)
+                .ExecuteUpdateAsync(update => update.SetProperty(o => o.CustomerName, customerName),
+                    cancellationToken) == 1;
+        }
+
         public async Task<(List<Order> Items, int TotalCount)> GetOrdersAsync(
             int page, int pageSize, CancellationToken cancellationToken)
         {

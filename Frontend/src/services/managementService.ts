@@ -1,5 +1,5 @@
 import { api } from "@/lib/api";
-import { isOrder, type Content, type Order } from "@/types";
+import { isOrder, type Content, type Order, type SupplierInfo } from "@/types";
 export interface Category {
   id: number;
   name: string;
@@ -45,9 +45,20 @@ export const management = {
   async deleteContent(id: number) {
     await api.delete(`/api/products/${id}/content`);
   },
-  async sync(supplier: "ABC" | "CDE") {
+  async suppliers() {
+    const { data } = await api.get<SupplierInfo[]>(
+      "/api/integration/suppliers",
+    );
+    if (
+      !Array.isArray(data) ||
+      data.some((s) => typeof s.code !== "string" || typeof s.name !== "string")
+    )
+      throw new Error("Invalid supplier list");
+    return data;
+  },
+  async sync(supplier: string) {
     const { data } = await api.post<ImportSummary>(
-      `/api/integration/import/${supplier}`,
+      `/api/integration/import/${encodeURIComponent(supplier)}`,
       undefined,
       { timeout: 120000 },
     );

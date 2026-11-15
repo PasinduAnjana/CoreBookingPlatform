@@ -8,6 +8,9 @@
     <Project Path="OrderService/OrderService.csproj" />
     <Project Path="ProductService/ProductService.csproj" />
   </Folder>
+  <Folder Name="/Contracts/">
+    <Project Path="SupplierContracts/SupplierContracts.csproj" />
+  </Folder>
   <Folder Name="/Solution Items/">
     <File Path=".env" />
     <File Path="docker-compose.yml" />

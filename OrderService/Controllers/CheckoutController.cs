@@ -66,6 +66,21 @@ namespace OrderService.Controllers
             return Ok(await _service.GetOrdersAsync(page, pageSize, cancellationToken));
         }
 
+        [HttpPut("orders/{orderId:guid}")]
+        public async Task<IActionResult> UpdateOrder(
+            Guid orderId, [FromBody] UpdateOrderRequestDto request, CancellationToken cancellationToken)
+        {
+            try
+            {
+                var order = await _service.UpdateOrderAsync(orderId, request, cancellationToken);
+                return order == null ? NotFound() : Ok(order);
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
         [HttpGet("orders/{orderId:guid}")]
         public async Task<IActionResult> GetOrder(Guid orderId)
         {

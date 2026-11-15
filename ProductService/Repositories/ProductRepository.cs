@@ -65,14 +65,6 @@ namespace ProductService.Repositories
         }
 
 
-        // Used by supplier import process later
-        public async Task<Product> CreateProductAsync(Product product)
-        {
-            _context.Products.Add(product);
-            await _context.SaveChangesAsync();
-            return product;
-        }
-
         public async Task<Product> UpdateProductAsync(Product product)
         {
             // Product must already be tracked by this DbContext

@@ -29,6 +29,7 @@ if (args.Contains("--serve"))
     app.MapGet("/api/product", () => new[] { Fixture.Product(1), Fixture.Product(2) });
     app.MapGet("/api/product/{id:int}", (int id) => Results.Ok(Fixture.Product(id)));
     app.MapGet("/api/products/{id:int}/content", () => Results.NotFound());
+    app.MapPost("/api/integration/availability", () => Results.Ok(new { availableQuantity = 20 }));
     await app.RunAsync();
     return;
 }
@@ -123,12 +124,98 @@ await Check("add uses the same capacity validation", async (cart, edit, repo) =>
     try { await Fixture.Service(repo).AddItemAsync(cart.Id, edit); throw new Exception("Expected rejection"); }
     catch (ArgumentException) { Assert(repo.Saves == 0 && cart.Items.Count == 1, "Invalid add changed cart"); }
 });
+await Check("add reports ProductService connection failures", async (cart, selection, repo) =>
+{
+    using var http = new HttpClient(new FailedProductResponses(_ => throw new HttpRequestException("Connection failed")))
+        { BaseAddress = new Uri("http://fixture/") };
+    var service = new CartService(repo, new ProductServiceClient(http), Fixture.IntegrationClient());
+    var result = await new CartController(service).AddItem(cart.Id, selection);
+    Assert(result is ObjectResult { StatusCode: 502 } && repo.Saves == 0 && cart.Items.Count == 1,
+        "Connection failure must return 502 and leave the cart unchanged");
+});
+await Check("add reports ProductService timeouts", async (cart, selection, repo) =>
+{
+    using var http = new HttpClient(new FailedProductResponses(_ => throw new TaskCanceledException("Timeout")))
+        { BaseAddress = new Uri("http://fixture/") };
+    var service = new CartService(repo, new ProductServiceClient(http), Fixture.IntegrationClient());
+    var result = await new CartController(service).AddItem(cart.Id, selection);
+    Assert(result is ObjectResult { StatusCode: 504 } && repo.Saves == 0 && cart.Items.Count == 1,
+        "Timeout must return 504 and leave the cart unchanged");
+});
+await Check("add propagates caller cancellation to ProductService", async (cart, selection, repo) =>
+{
+    using var cancellation = new CancellationTokenSource();
+    using var http = new HttpClient(new FailedProductResponses(token =>
+    {
+        cancellation.Cancel();
+        Assert(token.IsCancellationRequested, "ProductService must receive caller cancellation");
+        throw new OperationCanceledException(token);
+    })) { BaseAddress = new Uri("http://fixture/") };
+    var service = new CartService(repo, new ProductServiceClient(http), Fixture.IntegrationClient());
+    try
+    {
+        await new CartController(service).AddItem(cart.Id, selection, cancellation.Token);
+        throw new Exception("Caller cancellation was swallowed");
+    }
+    catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
+    {
+        Assert(repo.Saves == 0 && cart.Items.Count == 1, "Cancelled add must leave the cart unchanged");
+    }
+});
+foreach (var update in new[] { false, true })
+{
+    foreach (var scenario in new[] { "sold out", "insufficient rooms", "unavailable activity" })
+        await Check($"{(update ? "edit" : "add")} rejects {scenario} before saving", async (cart, selection, repo) =>
+        {
+            if (scenario == "unavailable activity") Fixture.Activity(cart, selection);
+            if (scenario == "insufficient rooms") selection.Rooms = 2;
+            var before = JsonSerializer.Serialize(cart.Items);
+            var supplier = new QuoteResponses(scenario == "insufficient rooms" ? 1 : 0,
+                scenario == "insufficient rooms");
+            var controller = new CartController(new CartService(repo, Fixture.ProductClient(), Fixture.IntegrationClient(supplier)));
+            var result = update
+                ? await controller.UpdateItem(cart.Id, 7, selection, default)
+                : await controller.AddItem(cart.Id, selection);
+            Assert(result is ObjectResult { StatusCode: 409 }, "Unavailable selection must return 409");
+            Assert(repo.Saves == 0 && before == JsonSerializer.Serialize(cart.Items), "Rejected selection changed the cart");
+            var sent = supplier.LastRequest!;
+            Assert(sent.SupplierCode == (selection.ProductId == 1 ? "ABC" : "CDE") &&
+                sent.SupplierOptionId == selection.SupplierOptionId && sent.Rooms == selection.Rooms &&
+                sent.CheckIn == selection.CheckIn && sent.CheckOut == selection.CheckOut &&
+                sent.Date == selection.ActivityDate && sent.TimeSlot == selection.TimeSlot &&
+                sent.Adults == selection.Adults && sent.Children == selection.Children,
+                "Availability must check the actual selection using server-side supplier details");
+        });
+
+    foreach (var timeout in new[] { false, true })
+        await Check($"{(update ? "edit" : "add")} handles supplier {(timeout ? "timeout" : "connection failure")}", async (cart, selection, repo) =>
+        {
+            var before = JsonSerializer.Serialize(cart.Items);
+            var supplier = new FailedProductResponses(_ => timeout
+                ? throw new TaskCanceledException("Timeout") : throw new HttpRequestException("Connection failed"));
+            var controller = new CartController(new CartService(repo, Fixture.ProductClient(), Fixture.IntegrationClient(supplier)));
+            var result = update
+                ? await controller.UpdateItem(cart.Id, 7, selection, default)
+                : await controller.AddItem(cart.Id, selection);
+            Assert(result is ObjectResult response && response.StatusCode == (timeout ? 504 : 502), "Expected controlled supplier error");
+            Assert(repo.Saves == 0 && before == JsonSerializer.Serialize(cart.Items), "Failed availability check changed the cart");
+        });
+}
+await Check("add saves after successful live availability check", async (cart, selection, repo) =>
+{
+    var supplier = new QuoteResponses(1);
+    var controller = new CartController(new CartService(repo, Fixture.ProductClient(), Fixture.IntegrationClient(supplier)));
+    var response = await controller.AddItem(cart.Id, selection);
+    Assert(response is OkObjectResult && repo.Saves == 1 && cart.Items.Count == 2 && supplier.LastRequest != null,
+        "Available selection must be checked and then saved");
+});
 Console.WriteLine($"{checks} cart item checks passed. No databases or live supplier APIs were used.");
 
 static class Fixture
 {
     public static ProductLookupDto Product(int id) => new()
     {
+        ProductType = id == 1 ? "Hotel" : "Activity",
         Id = id, Name = id == 1 ? "Test hotel" : "Test activity", IsActive = true,
         SupplierCode = id == 1 ? "ABC" : "CDE", SupplierProductId = id == 1 ? "ABC-H001" : "CDE-A101",
         AttributesJson = id == 1
@@ -156,7 +243,7 @@ static class Fixture
         edit.TimeSlot = "09:00";
     }
     public static ProductServiceClient ProductClient(ProductLookupDto? product = null) => new(new HttpClient(new ProductResponses(product)) { BaseAddress = new Uri("http://fixture/") });
-    public static IntegrationServiceClient IntegrationClient() => new(new HttpClient(new QuoteResponses()) { BaseAddress = new Uri("http://fixture/") });
+    public static IntegrationServiceClient IntegrationClient(HttpMessageHandler? handler = null) => new(new HttpClient(handler ?? new QuoteResponses()) { BaseAddress = new Uri("http://fixture/") });
     public static CartService Service(MemoryCarts repo, ProductLookupDto? product = null) => new(repo, ProductClient(product), IntegrationClient());
     public static CartController Controller(MemoryCarts repo, ProductLookupDto? product = null) => new(Service(repo, product));
 }
@@ -191,14 +278,22 @@ sealed class ProductResponses(ProductLookupDto? product) : HttpMessageHandler
     }
 }
 
-sealed class QuoteResponses : HttpMessageHandler
+sealed class FailedProductResponses(Func<CancellationToken, HttpResponseMessage> respond) : HttpMessageHandler
 {
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token)
+        => Task.FromResult(respond(token));
+}
+
+sealed class QuoteResponses(int quantity = 20, bool available = true) : HttpMessageHandler
+{
+    public AvailabilityRequestDto? LastRequest { get; private set; }
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken token)
     {
         var input = (await request.Content!.ReadFromJsonAsync<AvailabilityRequestDto>(token))!;
+        LastRequest = input;
         var price = input.SupplierCode == "ABC"
             ? (input.SupplierOptionId == "STD" ? 12000 : 18000) * input.Rooms * (input.CheckOut!.Value.DayNumber - input.CheckIn!.Value.DayNumber)
             : input.Adults * 5000 + input.Children * 2500;
-        return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new AvailabilityResponseDto { Available = true, AvailableQuantity = 20, Currency = "LKR", TotalPrice = price }) };
+        return new HttpResponseMessage(HttpStatusCode.OK) { Content = JsonContent.Create(new AvailabilityResponseDto { Available = available, AvailableQuantity = quantity, Currency = "LKR", TotalPrice = price }) };
     }
 }

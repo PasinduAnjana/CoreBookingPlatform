@@ -41,12 +41,13 @@ namespace OrderService.Controllers
         [HttpPost("{cartId:guid}/items")]
         public async Task<IActionResult> AddItem(
             Guid cartId,
-            [FromBody] AddCartItemDto dto)
+            [FromBody] AddCartItemDto dto,
+            CancellationToken cancellationToken = default)
         {
             try
             {
                 var cart = await _service.AddItemAsync(
-                    cartId, dto);
+                    cartId, dto, cancellationToken);
 
                 if (cart == null)
                     return NotFound("Cart not found.");
@@ -56,6 +57,18 @@ namespace OrderService.Controllers
             catch (ArgumentException ex)
             {
                 return BadRequest(ex.Message);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(ex.Message);
+            }
+            catch (HttpRequestException)
+            {
+                return StatusCode(502, "Unable to validate the product selection.");
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                return StatusCode(504, "Product validation timed out.");
             }
         }
 

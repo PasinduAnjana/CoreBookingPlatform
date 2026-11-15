@@ -1,12 +1,17 @@
 using IntegrationService.Adapters;
 using IntegrationService.Adapters.Interfaces;
 using IntegrationService.Services;
+using Microsoft.AspNetCore.Mvc;
+using SupplierContracts;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-builder.Services.AddControllers();
+builder.Services.AddControllers().ConfigureApiBehaviorOptions(options =>
+    options.InvalidModelStateResponseFactory = _ => new BadRequestObjectResult(
+        SupplierError.Create(SupplierErrorCode.InvalidRequest, SupplierErrorOutcome.Rejected)));
+builder.Services.AddProblemDetails();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
@@ -41,9 +46,15 @@ builder.Services.AddTransient<ISupplierAdapter>(sp =>
     sp.GetRequiredService<CdeSupplierAdapter>());
 
 builder.Services.AddScoped<SupplierIntegrationService>();
+builder.Services.AddScoped<SupplierAdapterRegistry>();
 builder.Services.AddScoped<ProductImportOrchestrator>();
 
 var app = builder.Build();
+app.UseExceptionHandler();
+
+// Check supplier metadata and duplicate codes before accepting requests.
+using (var scope = app.Services.CreateScope())
+    scope.ServiceProvider.GetRequiredService<SupplierAdapterRegistry>();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

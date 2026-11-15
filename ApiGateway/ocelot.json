@@ -119,7 +119,8 @@
       "UpstreamPathTemplate": "/api/orders/{everything}",
       "UpstreamHttpMethod": [
         "GET",
-        "POST"
+        "POST",
+        "PUT"
       ],
       "DownstreamPathTemplate": "/api/orders/{everything}",
       "SwaggerKey": "orders",
@@ -176,6 +177,30 @@
         }
       ],
       "UpstreamPathTemplate": "/api/integration/import/{supplierCode}"
+    }
+,
+    {
+      "UpstreamPathTemplate": "/api/integration/availability",
+      "UpstreamHttpMethod": ["POST"],
+      "DownstreamPathTemplate": "/api/integration/availability",
+      "SwaggerKey": "integration",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [{ "Host": "localhost", "Port": 7098 }]
+    },
+    {
+      "UpstreamPathTemplate": "/api/integration/suppliers",
+      "UpstreamHttpMethod": [
+        "GET"
+      ],
+      "DownstreamPathTemplate": "/api/integration/suppliers",
+      "SwaggerKey": "integration",
+      "DownstreamScheme": "https",
+      "DownstreamHostAndPorts": [
+        {
+          "Host": "localhost",
+          "Port": 7098
+        }
+      ]
     }
   ],
   "SwaggerEndPoints": [

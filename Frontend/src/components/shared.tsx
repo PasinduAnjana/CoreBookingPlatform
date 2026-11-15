@@ -44,7 +44,7 @@ export function ErrorState({
       <AlertCircle className="size-5 shrink-0 text-destructive" />
       <p className="flex-1 text-sm">{message}</p>
       {retry && (
-        <Button variant="outline" onClick={retry}>
+        <Button type="button" variant="outline" onClick={retry}>
           Try again
         </Button>
       )}
@@ -140,11 +140,11 @@ export function ProductCard({ product }: { product: Product }) {
       <CardContent className="space-y-3 p-5">
         <Badge variant="secondary">
           {product.category?.name ||
-            (product.supplierCode === "ABC"
+            (product.productType === "Hotel"
               ? "Hotel"
-              : product.supplierCode === "CDE"
+              : product.productType === "Activity"
                 ? "Activity"
-                : product.supplierCode)}
+                : product.productType)}
         </Badge>
         <h2 className="text-lg">{product.name}</h2>
         {product.location && (

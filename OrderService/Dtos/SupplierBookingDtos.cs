@@ -1,4 +1,5 @@
-﻿
+using SupplierContracts;
+
 namespace OrderService.DTOs
 {
     public class SupplierBookingRequestDto
@@ -26,7 +27,7 @@ namespace OrderService.DTOs
         public string SupplierBookingId { get; set; } = "";
         public string SupplierProductId { get; set; } = "";
         public string SupplierOptionId { get; set; } = "";
-        public string Status { get; set; } = "";
+        public SupplierBookingStatus Status { get; set; }
         public string Currency { get; set; } = "";
         public decimal TotalPrice { get; set; }
     }
@@ -41,6 +42,6 @@ namespace OrderService.DTOs
     {
         public string SupplierCode { get; set; } = "";
         public string SupplierBookingId { get; set; } = "";
-        public string Status { get; set; } = "";
+        public SupplierBookingStatus Status { get; set; }
     }
 }

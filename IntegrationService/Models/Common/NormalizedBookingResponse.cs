@@ -1,4 +1,5 @@
-﻿
+using SupplierContracts;
+
 namespace IntegrationService.Models.Common
 {
     public class NormalizedBookingResponse
@@ -11,7 +12,7 @@ namespace IntegrationService.Models.Common
 
         public string SupplierOptionId { get; set; }  = string.Empty;
 
-        public string Status { get; set; } = string.Empty;
+        public SupplierBookingStatus Status { get; set; }
 
         public string Currency { get; set; } = string.Empty;
 

@@ -1,10 +1,11 @@
-﻿
+
 using Microsoft.EntityFrameworkCore;
 using OrderService.Clients;
 using OrderService.Data;
 using OrderService.DTOs;
 using OrderService.Models;
 using OrderService.Services.Interfaces;
+using SupplierContracts;
 
 namespace OrderService.Services;
 
@@ -36,7 +37,7 @@ public class OrderCancellationService : IOrderCancellationService
 
         // Already cancelled
         if (order.Status == OrderStatus.Cancelled)
-            return ToDto(order);
+            return OrderDto.FromOrder(order);
 
         // Only confirmed orders or previously failed
         // cancellations can be processed.
@@ -76,10 +77,8 @@ public class OrderCancellationService : IOrderCancellationService
                         },
                         cancellationToken);
 
-                if (!string.Equals(
-                    result.Status,
-                    "Cancelled",
-                    StringComparison.OrdinalIgnoreCase))
+                if (result.Status != SupplierBookingStatus.Cancelled ||
+                    result.SupplierBookingId != booking.SupplierBookingId)
                 {
                     throw new InvalidOperationException(
                         "Supplier did not confirm cancellation.");
@@ -89,13 +88,14 @@ public class OrderCancellationService : IOrderCancellationService
                 booking.ErrorMessage = null;
             }
             catch (Exception ex) when (
-                ex is not OperationCanceledException)
+                ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
             {
                 // Keep Confirmed so cancellation can be retried.
                 // The supplier may already have cancelled it.
                 allCancelled = false;
-                booking.ErrorMessage =
-                    $"Cancellation needs retry: {ex.Message}";
+                booking.ErrorMessage = ex is OperationCanceledException
+                    ? "Cancellation timed out and needs retry."
+                    : $"Cancellation needs retry: {ex.Message}";
             }
 
             await _context.SaveChangesAsync(cancellationToken);
@@ -111,35 +111,6 @@ public class OrderCancellationService : IOrderCancellationService
 
         await _context.SaveChangesAsync(cancellationToken);
 
-        return ToDto(order);
-    }
-
-    private static OrderDto ToDto(Order order)
-    {
-        return new OrderDto
-        {
-            Id = order.Id,
-            CartId = order.CartId,
-            CustomerName = order.CustomerName,
-            Status = order.Status,
-            Currency = order.Currency,
-            TotalPrice = order.TotalPrice,
-            ErrorMessage = order.ErrorMessage,
-            CreatedAt = order.CreatedAt,
-
-            Bookings = order.Bookings
-                .OrderBy(b => b.CartItemId)
-                .Select(b => new BookingResultDto
-                {
-                    Id = b.Id,
-                    ProductId = b.ProductId,
-                    SupplierCode = b.SupplierCode,
-                    SupplierBookingId = b.SupplierBookingId,
-                    Status = b.Status,
-                    TotalPrice = b.TotalPrice,
-                    ErrorMessage = b.ErrorMessage
-                })
-                .ToList()
-        };
+        return OrderDto.FromOrder(order);
     }
 }

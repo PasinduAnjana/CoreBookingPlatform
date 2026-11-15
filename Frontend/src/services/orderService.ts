@@ -27,6 +27,11 @@ export const orders = {
       );
     return response.data;
   },
+  async update(id: string, customerName: string) {
+    return checked(
+      (await api.put(`/api/orders/${encodeURIComponent(id)}`, { customerName })).data,
+    );
+  },
   async cancel(id: string) {
     return checked(
       (await api.post(`/api/orders/${encodeURIComponent(id)}/cancel`)).data,

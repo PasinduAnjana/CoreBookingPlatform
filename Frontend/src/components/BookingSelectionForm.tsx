@@ -1,4 +1,4 @@
-import { useState, useRef, type FormEvent } from "react";
+import { useState, useRef, type ChangeEvent, type FormEvent } from "react";
 import { Link } from "react-router-dom";
 import { ShoppingBag, Check, CalendarIcon, Save } from "lucide-react";
 import { format, parseISO, startOfDay } from "date-fns";
@@ -25,6 +25,8 @@ import { attributes, type Product, type Selection } from "@/types";
 import { errorMessage } from "@/lib/api";
 import { today } from "@/lib/utils";
 import { ErrorState } from "@/components/shared";
+import { useLoad } from "@/hooks/useLoad";
+import { products } from "@/services/productService";
 
 export function BookingSelectionForm({
   product,
@@ -42,8 +44,8 @@ export function BookingSelectionForm({
   onCancel?: () => void;
 }) {
   const attrs = attributes(product.attributesJson),
-    hotel = product.supplierCode === "ABC",
-    supported = hotel || product.supplierCode === "CDE";
+    hotel = product.productType === "Hotel",
+    supported = hotel || product.productType === "Activity";
   const [optionId, setOption] = useState(
       initialSelection?.supplierOptionId ?? "",
     ),
@@ -70,6 +72,28 @@ export function BookingSelectionForm({
     [error, setError] = useState("");
   const lock = useRef(false);
   const option = attrs.options.find((o) => o.supplierOptionId === optionId);
+  const [roomCount, setRoomCount] = useState(String(initialSelection?.rooms ?? 1));
+  const checkIn = stay?.from ? format(stay.from, "yyyy-MM-dd") : "",
+    checkOut = stay?.to ? format(stay.to, "yyyy-MM-dd") : "";
+  const roomKey =
+    hotel && optionId && checkIn >= today() && checkOut > checkIn
+      ? [product.id, optionId, checkIn, checkOut].join("|")
+      : "";
+  const roomAvailability = useLoad(
+    async () => roomKey ? {
+      key: roomKey,
+      count: await products.availableRooms(product, optionId, checkIn, checkOut),
+    } : null,
+    [product.id, product.supplierCode, product.supplierProductId, roomKey],
+  );
+  const availableRooms =
+    roomAvailability.data?.key === roomKey ? roomAvailability.data.count : null;
+  const roomsReady =
+    !roomAvailability.loading && availableRooms !== null && availableRooms > 0;
+  const displayedRooms =
+    availableRooms !== null && availableRooms > 0 && Number(roomCount) > availableRooms
+      ? String(availableRooms)
+      : roomCount;
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (lock.current) return;
@@ -80,11 +104,13 @@ export function BookingSelectionForm({
       children = Number(form.get("children")),
       rooms = hotel ? Number(form.get("rooms")) : 1;
     // Format local calendar dates directly, avoiding UTC date shifts.
-    const date = activityDate ? format(activityDate, "yyyy-MM-dd") : "",
-      checkIn = stay?.from ? format(stay.from, "yyyy-MM-dd") : "",
-      checkOut = stay?.to ? format(stay.to, "yyyy-MM-dd") : "";
+    const date = activityDate ? format(activityDate, "yyyy-MM-dd") : "";
     let message = "";
     if (!option) message = "Choose a booking option.";
+    else if (
+      hotel && (!roomsReady || availableRooms === null || rooms > availableRooms)
+    )
+      message = "Choose a room count within the current availability.";
     else if (
       ![adults, children, rooms].every(Number.isSafeInteger) ||
       adults < 0 ||
@@ -353,16 +379,34 @@ export function BookingSelectionForm({
               type="number"
               min={Number(min)}
               step="1"
-              defaultValue={
-                initialSelection?.[key as "adults" | "children" | "rooms"] ??
-                value
-              }
+              {...(key === "rooms" ? {
+                value: displayedRooms,
+                max: availableRooms ?? undefined,
+                onChange: (event: ChangeEvent<HTMLInputElement>) => {
+                  const value = event.target.value;
+                  setRoomCount(availableRooms !== null && Number(value) > availableRooms
+                    ? String(availableRooms) : value);
+                  setAdded(false);
+                },
+                "aria-describedby": "rooms-availability",
+              } : {
+                defaultValue: initialSelection?.[key as "adults" | "children"] ?? value,
+              })}
               required
-              disabled={busy}
+              disabled={busy || (key === "rooms" && !roomsReady)}
             />
           </div>
         ))}
       </div>
+      {hotel && (
+        <div id="rooms-availability" aria-live="polite" className="text-xs text-muted-foreground">
+          {!roomKey ? "Select a room type and stay dates to check available rooms."
+            : roomAvailability.error ? <ErrorState message={roomAvailability.error} retry={roomAvailability.reload} />
+            : roomAvailability.loading || availableRooms === null ? "Checking available rooms…"
+            : availableRooms === 0 ? "No rooms are available for these dates. Choose another room type or dates."
+            : `${availableRooms} room${availableRooms === 1 ? "" : "s"} currently available.`}
+        </div>
+      )}
       {error && <ErrorState message={error} />}
       <Separator />
       <div className="flex gap-3">
@@ -376,7 +420,7 @@ export function BookingSelectionForm({
             Cancel
           </Button>
         )}
-        <Button className="flex-1" disabled={busy || unavailable} type="submit">
+        <Button className="flex-1" disabled={busy || unavailable || (hotel && !roomsReady)} type="submit">
           {initialSelection ? (
             <Save className="size-4" />
           ) : (

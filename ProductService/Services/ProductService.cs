@@ -21,6 +21,7 @@ namespace ProductService.Services
             {
                 Id = product.Id,
                 Name = product.Name,
+                ProductType = product.ProductType,
 
                 CategoryId = product.CategoryId,
 
@@ -41,7 +42,9 @@ namespace ProductService.Services
                 Supplier = new SupplierDto
                 {
                     Id = product.Supplier.Id,
-                    Name = product.Supplier.Name
+                    Name = product.Supplier.Name,
+                    Code = product.Supplier.Code,
+                    IsActive = product.Supplier.IsActive
                 },
 
                 SupplierProductId = product.SupplierProductId,

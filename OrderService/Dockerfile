@@ -4,9 +4,11 @@ FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
 
 COPY OrderService/OrderService.csproj OrderService/
+COPY SupplierContracts/SupplierContracts.csproj SupplierContracts/
 RUN dotnet restore OrderService/OrderService.csproj
 
 COPY OrderService/ OrderService/
+COPY SupplierContracts/ SupplierContracts/
 
 WORKDIR /src/OrderService
 

@@ -5,6 +5,7 @@ namespace IntegrationService.Adapters.Interfaces
     public interface ISupplierAdapter
     {
         string SupplierCode { get; }
+        string SupplierName { get; }
         Task<List<NormalizedProduct>> GetProductsAsync(CancellationToken cancellationToken = default);
 
         Task<NormalizedAvailabilityResponse> CheckAvailabilityAsync(NormalizedAvailabilityRequest request,CancellationToken cancellationToken = default);
@@ -18,4 +19,4 @@ namespace IntegrationService.Adapters.Interfaces
             CancellationToken cancellationToken = default);
 
     }
-} 
+}

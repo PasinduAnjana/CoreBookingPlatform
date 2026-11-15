@@ -16,6 +16,8 @@ namespace ProductService.Services
 
         public async Task<ImportProductResultDto> ImportAsync(ImportProductDto dto)
         {
+            if (dto.ProductType != "Hotel" && dto.ProductType != "Activity")
+                throw new ArgumentException("ProductType must be Hotel or Activity.");
             if (string.IsNullOrWhiteSpace(dto.SupplierCode) ||
                 string.IsNullOrWhiteSpace(dto.SupplierProductId) ||
                 string.IsNullOrWhiteSpace(dto.Name))
@@ -29,6 +31,8 @@ namespace ProductService.Services
                 throw new ArgumentException(
                     "Attributes must be a JSON object.");
             }
+
+            dto.SupplierCode = dto.SupplierCode.Trim().ToUpperInvariant();
 
             var supplier = await _repository
                 .GetSupplierByCodeAsync(dto.SupplierCode);
@@ -52,11 +56,15 @@ namespace ProductService.Services
 
             bool created = product == null;
 
+            if (product != null && product.ProductType != dto.ProductType)
+                throw new ArgumentException("An existing product's type cannot change. Use a new supplier product reference.");
+
             if (product == null)
             {
                 product = new Product
                 {
                     SupplierId = supplier.Id,
+                    ProductType = dto.ProductType,
                     SupplierProductId = dto.SupplierProductId,
                     CategoryId = null,
                     IsActive = true

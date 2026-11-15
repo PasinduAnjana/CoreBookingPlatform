@@ -1,5 +1,3 @@
-﻿using Microsoft.EntityFrameworkCore;
-using ProductService.Data;
 using ProductService.DTOs;
 using ProductService.Models;
 using ProductService.Repositories.Interfaces;
@@ -32,7 +30,7 @@ namespace ProductService.Services
             return categories.Select(c => toDto(c)).ToList();
         }
 
-        public async Task<CategoryDto> GetCategoryByIdAsync(int id)
+        public async Task<CategoryDto?> GetCategoryByIdAsync(int id)
         {
             var category = await _repository.GetCategoryByIdAsync(id);
             if (category == null)
@@ -53,7 +51,7 @@ namespace ProductService.Services
             return toDto(createdCategory);
         }
 
-        public async Task<CategoryDto> UpdateCategoryAsync(int id,UpdateCategoryDto updateCategoryDto)
+        public async Task<CategoryDto?> UpdateCategoryAsync(int id,UpdateCategoryDto updateCategoryDto)
         {
             var existingCategory = await _repository.GetCategoryByIdAsync(id);
             if (existingCategory == null)

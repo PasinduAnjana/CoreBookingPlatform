@@ -4,7 +4,6 @@ using OrderService.DTOs;
 using OrderService.Models;
 using OrderService.Repositories.Interfaces;
 using OrderService.Services.Interfaces;
-using System.Text.Json;
 using static OrderService.Dtos.ExternalServiceDtos;
 
 namespace OrderService.Services
@@ -68,16 +67,16 @@ namespace OrderService.Services
             return cart == null ? null : ToDto(cart);
         }
 
-        public async Task<CartDto?> AddItemAsync(Guid cartId,AddCartItemDto dto)
+        public async Task<CartDto?> AddItemAsync(Guid cartId, AddCartItemDto dto,
+            CancellationToken cancellationToken = default)
         {
             var cart = await _repository.GetByIdAsync(cartId);
 
             if (cart == null)
                 return null;
 
-            ValidateBookingSelection(dto);
-            await ValidateProductAsync(dto);
-
+            var product = await ValidateProductAsync(dto, cancellationToken);
+            await ValidateAvailabilityAsync(dto, product, cancellationToken);
 
             var item = new CartItem
             {
@@ -117,8 +116,8 @@ namespace OrderService.Services
                 throw new ArgumentException("An edit cannot change the product. Add a new selection instead.");
 
             // Validate before changing the tracked item so rejected edits leave it intact.
-            ValidateBookingSelection(dto);
-            await ValidateProductAsync(dto, cancellationToken);
+            var product = await ValidateProductAsync(dto, cancellationToken);
+            await ValidateAvailabilityAsync(dto, product, cancellationToken);
 
             item.SupplierOptionId = dto.SupplierOptionId;
             item.CheckIn = dto.CheckIn;
@@ -155,165 +154,38 @@ namespace OrderService.Services
             return true;
         }
 
-        private static void ValidateBookingSelection(AddCartItemDto dto)
-        {
-            if (dto.ProductId <= 0 || string.IsNullOrWhiteSpace(dto.SupplierOptionId))
-            {
-                throw new ArgumentException(
-                    "Product and supplier option are required.");
-            }
-
-            if (dto.Adults < 0 || dto.Children < 0 ||
-                (long)dto.Adults + dto.Children < 1 ||
-                dto.Rooms < 1)
-            {
-                throw new ArgumentException(
-                    "Invalid guest or room count.");
-            }
-
-            bool hasHotelDates = dto.CheckIn.HasValue || dto.CheckOut.HasValue;
-
-            bool hasActivityDetails =dto.ActivityDate.HasValue || !string.IsNullOrWhiteSpace(dto.TimeSlot);
-
-            if (hasHotelDates == hasActivityDetails)
-            {
-                throw new ArgumentException("Specify either hotel dates or activity details.");
-            }
-
-            var today = DateOnly.FromDateTime(DateTime.UtcNow);
-
-            if (hasHotelDates)
-            {
-                if (!dto.CheckIn.HasValue ||
-                    !dto.CheckOut.HasValue ||
-                    dto.CheckIn.Value < today ||
-                    dto.CheckOut.Value <= dto.CheckIn.Value ||
-                    dto.Adults < dto.Rooms)
-                {
-                    throw new ArgumentException("Invalid hotel booking selection.");
-                }
-            }
-            else
-            {
-                if (!dto.ActivityDate.HasValue ||
-                    dto.ActivityDate.Value < today ||
-                    string.IsNullOrWhiteSpace(dto.TimeSlot) ||
-                    dto.Rooms != 1)
-                {
-                    throw new ArgumentException(
-                        "Invalid activity booking selection.");
-                }
-            }
-        }
-
-
         private async Task<ProductLookupDto> ValidateProductAsync(
             AddCartItemDto dto, CancellationToken cancellationToken = default)
         {
             var product = await _productClient.GetProductAsync(dto.ProductId, cancellationToken);
-
-            if (product == null)
-                throw new ArgumentException("Product does not exist.");
-
-            if (!product.IsActive)
-                throw new ArgumentException("Product is inactive.");
-
-            var supplier = product.SupplierCode.ToUpperInvariant();
-
-            if (supplier == "ABC" && (!dto.CheckIn.HasValue || !dto.CheckOut.HasValue))
-            {
-                throw new ArgumentException(
-                    "ABC hotel requires check-in and check-out.");
-            }
-
-            if (supplier == "CDE" &&
-                (!dto.ActivityDate.HasValue ||
-                 string.IsNullOrWhiteSpace(dto.TimeSlot)))
-            {
-                throw new ArgumentException(
-                    "CDE activity requires a date and time slot.");
-            }
-
-            if (supplier != "ABC" && supplier != "CDE")
-                throw new ArgumentException("Unsupported supplier.");
-
-            if (string.IsNullOrWhiteSpace(product.AttributesJson))
-                throw new ArgumentException("Product has no options.");
-
-            JsonDocument document;
-            try
-            {
-                document = JsonDocument.Parse(product.AttributesJson);
-            }
-            catch (JsonException)
-            {
-                throw new ArgumentException("Product options are invalid.");
-            }
-
-            using var parsedOptions = document;
-
-            var root = document.RootElement;
-
-            if (root.ValueKind != JsonValueKind.Object ||
-                !root.TryGetProperty("options", out var options) ||
-                options.ValueKind != JsonValueKind.Array)
-            {
-                throw new ArgumentException(
-                    "Product options are missing.");
-            }
-
-            var selectedOption = options.EnumerateArray().FirstOrDefault(option =>
-                option.ValueKind == JsonValueKind.Object &&
-                (option.TryGetProperty("supplierOptionId", out var id) ||
-                 (supplier == "CDE" && option.TryGetProperty("supplierPackageId", out id))) &&
-                id.ValueKind == JsonValueKind.String &&
-                id.GetString() == dto.SupplierOptionId);
-
-            if (selectedOption.ValueKind != JsonValueKind.Object)
-                throw new ArgumentException(
-                    "Selected option does not exist.");
-
-            static int? Limit(JsonElement option, string property)
-            {
-                if (!option.TryGetProperty(property, out var value)) return null;
-                if (value.ValueKind != JsonValueKind.Number || !value.TryGetInt32(out var limit) || limit < 0)
-                    throw new ArgumentException("Product capacity limits are invalid.");
-                return limit;
-            }
-
-            if (supplier == "ABC")
-            {
-                var maxAdults = Limit(selectedOption, "maxAdults");
-                var maxChildren = Limit(selectedOption, "maxChildren");
-                if ((maxAdults.HasValue && dto.Adults > (long)maxAdults.Value * dto.Rooms) ||
-                    (maxChildren.HasValue && dto.Children > (long)maxChildren.Value * dto.Rooms))
-                    throw new ArgumentException("The selected guests exceed this room's occupancy limits.");
-            }
-            else
-            {
-                if (!root.TryGetProperty("timeSlots", out var slots) ||
-                    slots.ValueKind != JsonValueKind.Array ||
-                    !slots.EnumerateArray().Any(s => s.ValueKind == JsonValueKind.String && s.GetString() == dto.TimeSlot))
-                    throw new ArgumentException("Select a supported activity time slot.");
-
-                var maxParticipants = Limit(selectedOption, "maxParticipants");
-                if (maxParticipants.HasValue && (long)dto.Adults + dto.Children > maxParticipants.Value)
-                    throw new ArgumentException("The selected participants exceed this package's capacity.");
-
-                if (!selectedOption.TryGetProperty("passengerTypes", out var passengerTypes) ||
-                    passengerTypes.ValueKind != JsonValueKind.Array)
-                    throw new ArgumentException("Package passenger types are missing.");
-
-                var supportedTypes = passengerTypes.EnumerateArray()
-                    .Where(p => p.ValueKind == JsonValueKind.String)
-                    .Select(p => p.GetString())
-                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
-                if ((dto.Adults > 0 && !supportedTypes.Contains("Adult")) ||
-                    (dto.Children > 0 && !supportedTypes.Contains("Child")))
-                    throw new ArgumentException("The package does not support this participant selection.");
-            }
-
+            if (product == null) throw new ArgumentException("Product does not exist.");
+            BookingSelectionValidator.Validate(dto, product);
             return product;
+        }
+
+        private async Task ValidateAvailabilityAsync(AddCartItemDto dto, ProductLookupDto product,
+            CancellationToken cancellationToken)
+        {
+            var availability = await _integrationClient.CheckAvailabilityAsync(new AvailabilityRequestDto
+            {
+                SupplierCode = product.SupplierCode,
+                SupplierProductId = product.SupplierProductId,
+                SupplierOptionId = dto.SupplierOptionId,
+                CheckIn = dto.CheckIn,
+                CheckOut = dto.CheckOut,
+                Date = dto.ActivityDate,
+                TimeSlot = dto.TimeSlot,
+                Adults = dto.Adults,
+                Children = dto.Children,
+                Rooms = dto.Rooms
+            }, cancellationToken);
+
+            if (product.ProductType == "Hotel" && availability.AvailableQuantity < dto.Rooms)
+                throw new InvalidOperationException(
+                    $"Only {Math.Max(0, availability.AvailableQuantity)} room(s) are available for the selected dates; you requested {dto.Rooms}.");
+
+            if (!availability.Available)
+                throw new InvalidOperationException("This selection is no longer available. Choose different dates or options.");
         }
 
         public async Task<CartQuoteDto?> GetCartQuoteAsync(Guid cartId,CancellationToken cancellationToken = default)

@@ -7,6 +7,7 @@ namespace IntegrationService.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [TypeFilter(typeof(SupplierExceptionFilter))]
     public class IntegrationController : ControllerBase
     {
         private readonly SupplierIntegrationService _service;
@@ -22,23 +23,19 @@ namespace IntegrationService.Controllers
             return Ok(products);
         }
 
+        [HttpGet("suppliers")]
+        public ActionResult<List<SupplierInfo>> GetSuppliers([FromServices] SupplierAdapterRegistry registry)
+        {
+            return Ok(registry.GetSuppliers());
+        }
+
         [HttpGet("products/{supplierCode}")]
         public async Task<IActionResult> GetSupplierProducts(
             string supplierCode,
             CancellationToken cancellationToken)
         {
-            try
-            {
-                var products = await _service.GetProductsAsync(
-                    supplierCode,
-                    cancellationToken);
-
-                return Ok(products);
-            }
-            catch (KeyNotFoundException ex)
-            {
-                return NotFound(ex.Message);
-            }
+            var products = await _service.GetProductsAsync(supplierCode, cancellationToken);
+            return Ok(products);
         }
     }
 }

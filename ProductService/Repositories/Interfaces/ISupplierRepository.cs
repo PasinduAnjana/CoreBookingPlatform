@@ -7,5 +7,6 @@ namespace ProductService.Repositories.Interfaces
         Task<List<Supplier>> GetAllSuppliersAsync();
         Task<Supplier?> GetSupplierByIdAsync(int id);
         Task<Supplier?> GetSupplierByCodeAsync(string code);
+        Task<Supplier> GetOrAddAsync(string code, string name);
     }
 }

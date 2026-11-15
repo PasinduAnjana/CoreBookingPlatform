@@ -5,6 +5,7 @@ namespace ProductService.DTOs
     public class ImportProductDto
     {
         public string SupplierCode { get; set; } = string.Empty;
+        public string ProductType { get; set; } = string.Empty;
         public string SupplierProductId { get; set; } = string.Empty;
         public string Name { get; set; } = string.Empty;
         public string? Location { get; set; }

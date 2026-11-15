@@ -69,13 +69,13 @@ CoreBookingPlatform/
 
 Both `AbcSupplierAdapter` and `CdeSupplierAdapter` implement [`ISupplierAdapter`](IntegrationService/Adapters/Interfaces/ISupplierAdapter.cs):
 
-- `SupplierCode`: identifies the supplier (`ABC` or `CDE`).
+- `SupplierCode` and `SupplierName`: identify the supplier and provide its display name.
 - `GetProductsAsync`: returns a normalized catalog.
 - `CheckAvailabilityAsync`: returns normalized availability and pricing.
 - `CreateBookingAsync`: creates a supplier booking and returns its reference and status.
 - `CancelBookingAsync`: cancels a supplier booking.
 
-`SupplierIntegrationService` receives the registered adapters and selects one using the supplier code. OrderService works with common request/response DTOs rather than ABC- or CDE-specific field names.
+`SupplierAdapterRegistry` resolves DI-registered adapters by code, rejects duplicate codes at startup, and provides supplier discovery metadata. `SupplierIntegrationService` uses that registry for catalog, availability, booking, and cancellation operations. OrderService works with common request/response DTOs rather than supplier-specific field names.
 
 | Platform concept | ABC Hotels | CDE Activities |
 | --- | --- | --- |
@@ -84,9 +84,43 @@ Both `AbcSupplierAdapter` and `CdeSupplierAdapter` implement [`ISupplierAdapter`
 | Selection | Check-in/out, rooms, adults, children | Activity date, time slot, adults, children |
 | Price | Room rate × rooms × nights | Adult and child rates × participant counts |
 
-The adapters map these differences into models under `IntegrationService/Models/Common`. To add another supplier, implement `ISupplierAdapter`, register its HTTP client and adapter in dependency injection, configure its URL, and add the supplier record. The current import controller and management UI also explicitly list supported supplier codes and would need updating.
+The adapters map these differences into models under `IntegrationService/Models/Common`. Each normalized product carries `ProductType`, currently `Hotel` or `Activity`. OrderService validation and React booking controls use that type; supplier codes select adapters and maintain supplier references. A supplier can return products of both supported types.
+
+### Adding a supplier
+
+For a supplier offering an existing product type:
+
+1. Implement `ISupplierAdapter` and return the common Hotel/Activity contract.
+2. Register its HTTP client and adapter in IntegrationService and configure its API URL.
+3. Rebuild IntegrationService and run catalog sync using the discovered supplier.
+
+The sync dialog discovers suppliers using `GET /api/integration/suppliers`, including suppliers not imported yet. Sync registers the supplier in ProductDB by code before importing products. Registration is idempotent, including concurrent requests, and never renames or reactivates an existing supplier. No supplier-specific edits to OrderService, ProductService, gateway routes, or React are needed, and onboarding needs no migration or seed edit.
+
+Existing databases need the one-time `AddProductType` migration before running this version. It backfills ABC products as Hotel and CDE products as Activity while preserving existing data. See [supplier onboarding and upgrade instructions](docs/SUPPLIER_ONBOARDING.md) for the adapter example, migration commands, Docker rebuild commands, and verification checks.
 
 Catalog import and availability are separate operations. Import stores descriptions and selectable options in ProductDB. Availability and prices are requested live from suppliers when a cart is quoted and again before checkout. Adding an item to a cart does not reserve inventory; a successful supplier booking does.
+
+### Supplier statuses and errors
+
+`SupplierContracts` contains the small HTTP contract shared by IntegrationService and OrderService. Booking/cancellation statuses are string enums: `Unknown`, `Pending`, `Confirmed`, `Cancelled`, and `Failed`. ABC and CDE explicitly map their documented `Confirmed`/`Cancelled` values inside their adapters; unrecognized or missing statuses become `Unknown`. A confirmation without a supplier reference is not accepted. Order/customer API status strings and database schemas are unchanged.
+
+Supplier failures use a JSON envelope with `code`, `outcome`, and a safe `message`, for example:
+
+```json
+{
+  "code": "Conflict",
+  "outcome": "Rejected",
+  "message": "The supplier rejected the operation because of a conflict."
+}
+```
+
+Each adapter owns the interpretation of its supplier's errors. ABC/CDE's 400, 404, and 409 responses explicitly reject the operation under their mock contracts. Authentication failures, rate limiting, timeouts, connection failures, server failures, and malformed responses retain an `Unknown` outcome. IntegrationService returns 400/404/409 for the corresponding rejections, 503 for rate limiting, 504 for timeouts, and 502 for other supplier failures. Raw supplier response bodies are never forwarded.
+
+OrderService relies on the explicit normalized rejection, not the HTTP status alone. Bare/legacy error bodies remain uncertain even with HTTP 409. Checkout compensates earlier confirmed bookings after either rejection or uncertainty; uncertainty or unconfirmed compensation produces `RequiresAttention`. Cancellation requires the normalized `Cancelled` status and matching supplier reference. No automatic booking retries or reconciliation worker are added.
+
+After upgrading, rebuild IntegrationService and OrderService together. No database migration is needed. Run `dotnet run --project tests/SupplierNormalizationChecks` for isolated adapter, HTTP contract, and checkout failure checks without SQL Server or live suppliers.
+
+ProductService, OrderService, and IntegrationService use ASP.NET Core's built-in exception handler and Problem Details for unexpected failures. Recognized validation/supplier errors keep their existing responses; unexpected errors are logged and return a generic HTTP 500 response. Cart additions report ProductService connection failures as 502 and timeouts as 504. Caller cancellation propagates, while a downstream cancellation timeout persists `CancellationFailed` so the cancellation can be retried. Category deletion maps SQL foreign-key conflicts to 409; unrelated database failures reach the centralized handler.
 
 ## Database design
 
@@ -96,9 +130,9 @@ Compose runs one SQL Server instance containing two service-owned databases. EF 
 
 | Entity | Purpose and relationships |
 | --- | --- |
-| `Suppliers` | Supplier code, name, and active state. Supplier code is unique. ABC and CDE supplier records are seeded through migrations. |
+| `Suppliers` | Supplier code, name, and active state. Supplier code is unique. Existing ABC/CDE seeds remain for compatibility; catalog sync registers new suppliers automatically. |
 | `Categories` | Internal product classification. Deletion is restricted while products reference the category. |
-| `Products` | Supplier reference, name, location, category, active state, update timestamp, and attributes JSON. The pair `(SupplierId, SupplierProductId)` is unique. |
+| `Products` | Supplier reference, product type, name, location, category, active state, update timestamp, and attributes JSON. The pair `(SupplierId, SupplierProductId)` is unique. |
 | `ProductContents` | One-to-one product content: description, image metadata, highlights, facilities, inclusions, exclusions, and additional JSON. Deleted with its product. |
 
 The supplier seed creates supplier identities, not hotel or activity products. Run catalog imports to populate products. Reimport updates supplier-managed fields and overwrites local product content, while preserving existing category assignments and active states.
@@ -156,14 +190,18 @@ After changing gateway code or its package dependencies, rebuild the Docker gate
 | DELETE | `/api/carts/{cartId}/items/{itemId}` | Remove a selection. |
 | GET | `/api/carts/{cartId}/quote` | Get fresh supplier availability and prices. |
 | POST | `/api/carts/{cartId}/checkout` | Revalidate and book the cart; body: `{ "customerName": "Demo customer" }`. |
-| GET | `/api/orders/{orderId}` | Get the order and supplier booking summaries. |
+| GET | `/api/orders/{orderId}` | Get the order and saved supplier booking details, including dates, guests, options, currencies and confirmation references. |
+| PUT | `/api/orders/{orderId}` | Update the locally stored order customer name; body: `{ "customerName": "Updated customer" }`. |
 | POST | `/api/orders/{orderId}/cancel` | Cancel a confirmed order or retry a failed cancellation. |
+| POST | `/api/integration/availability` | Request live supplier pricing and availability; used by the hotel room input. |
 
 Adding an item requires the internal `productId` and a `supplierOptionId` from that product's attributes. Include `adults`, `children`, and `rooms`. Hotels require `checkIn` and `checkOut`; activities require `activityDate` and a supported `timeSlot`. Dates use `yyyy-MM-dd`. Do not send both hotel and activity date fields in the same selection.
 
 Updating an item uses the same complete request body as adding one, including the original `productId`. Dates, occupancy, option capacity, passenger types, and activity time slots are validated before saving. Missing carts/items return 404, invalid selections return 400, and editing a cart that already has an order returns 409. Editing does not reserve inventory; the React cart refreshes its live quote after a successful save.
 
 Checkout returns HTTP 200 for a confirmed order, 409 for a failed order, and 202 for an order that is not confirmed and needs further attention. A 202 response must not be treated as a successful booking. Failed cancellation returns 202 and can be retried through the same cancellation endpoint.
+
+Order customer updates trim whitespace and require 1–200 characters. The update returns the saved order, 400 for an invalid name, or 404 for an unknown order. It changes only the core order record; supplier reservation names, selections, prices and statuses remain as originally booked. Management order details provide this edit form. Booking status changes follow the checkout and cancellation workflows. No migration is required for the expanded responses or customer-name update.
 
 ### Management
 
@@ -174,7 +212,8 @@ Checkout returns HTTP 200 for a confirmed order, 409 for a failed order, and 202
 | GET / POST | `/api/category` | List or create categories. |
 | GET / PUT / DELETE | `/api/category/{id}` | Read, update, or delete a category. Assigned categories cannot be deleted. |
 | GET | `/api/orders?page=1&pageSize=20` | List orders, newest first; page size is limited to 100. |
-| POST | `/api/integration/import/{supplierCode}` | Import `ABC` or `CDE`; returns total, created, updated, failed, and error details. |
+| GET | `/api/integration/suppliers` | Discover registered adapter codes and names, including suppliers not imported yet. |
+| POST | `/api/integration/import/{supplierCode}` | Import a registered supplier; returns total, created, updated, failed, and error details. |
 
 ### Service-to-service routes
 
@@ -182,14 +221,14 @@ These endpoints are called directly between services and are not exposed by the 
 
 | Service | Method and route | Purpose |
 | --- | --- | --- |
-| ProductService | `POST /api/internal/products/import` | Persist one normalized supplier product. |
+| ProductService | `POST /api/internal/suppliers/register` | Idempotently register a supplier before catalog import. Existing names and active states are preserved. |
+| ProductService | `POST /api/internal/products/import` | Persist one normalized supplier product and its supported product type. |
 | IntegrationService | `GET /api/integration/products` | Read all supplier catalogs without importing. |
 | IntegrationService | `GET /api/integration/products/{supplierCode}` | Read one supplier's normalized catalog. |
-| IntegrationService | `POST /api/integration/availability` | Request live supplier pricing and availability. |
 | IntegrationService | `POST /api/integration/bookings` | Create a supplier booking. |
 | IntegrationService | `POST /api/integration/bookings/cancel` | Cancel a supplier booking. |
 
-Both the Integration import endpoint and ProductService's internal import endpoint return 404 outside Development. The current Compose configuration sets Development for the services. The name `internal` is a routing convention, not an authorization mechanism.
+The Integration import endpoint and ProductService's internal registration/import endpoints return 404 outside Development. The current Compose configuration sets Development for the services. The name `internal` is a routing convention, not an authorization mechanism.
 
 ## Docker setup
 
@@ -251,10 +290,10 @@ If `dotnet-ef` is already installed, check `dotnet ef --version` and use a compa
 $databasePassword = Read-Host -MaskInput "Enter the SQL password from .env"
 
 $env:ConnectionStrings__DefaultConnection = "Server=localhost,14333;Database=ProductDB;User Id=sa;Password=$databasePassword;Encrypt=True;TrustServerCertificate=True;"
-dotnet ef database update --project ProductService
+dotnet ef database update --project ProductService/ProductService.csproj --startup-project ProductService/ProductService.csproj
 
 $env:ConnectionStrings__DefaultConnection = "Server=localhost,14333;Database=OrderDB;User Id=sa;Password=$databasePassword;Encrypt=True;TrustServerCertificate=True;"
-dotnet ef database update --project OrderService
+dotnet ef database update --project OrderService/OrderService.csproj --startup-project OrderService/OrderService.csproj
 
 Remove-Item Env:\ConnectionStrings__DefaultConnection
 Remove-Variable databasePassword
@@ -315,7 +354,7 @@ After editing supplier JSON, rebuild/recreate the affected mock image, then run 
 1. Start the stack, apply migrations, and import both supplier catalogs.
 2. Open **Products** and select **Ocean View Hotel** (`ABC-H001`). Choose a Standard Room (`STD`), one room, two adults, and future check-in/out dates. Add it to the cart.
 3. Select **Colombo City Walking Tour** (`CDE-A101`). Choose Morning Group Tour (`MORNING`), a future activity date, a supported time slot such as `09:00`, and two adults. Add it to the same cart.
-4. Open **Cart**. The quote requests current availability and prices for both selections through IntegrationService and the supplier adapters. Use **Edit** to change an option, dates, time slot, or guest/room counts. Saving keeps the same cart item and refreshes its live quote; **Cancel** leaves the original selection unchanged.
+4. Open **Cart**. The quote requests current availability and prices for both selections through IntegrationService and the supplier adapters. Use **Edit** to change an option, dates, time slot, or guest/room counts. The Rooms input checks live inventory when room type or stay dates change and limits the selection to the available count. Additions and edits check supplier availability before saving. Saving keeps the same cart item and refreshes its live quote; **Cancel** leaves the original selection unchanged.
 5. Continue to **Checkout**, enter a customer name, and confirm. OrderService obtains a fresh quote, creates one order, and requests one supplier booking for each cart item.
 6. Verify the order is **Confirmed** and both supplier booking references are present. Save the order reference; **My bookings** stores recent references in the current browser.
 7. Open the order and choose **Cancel**. The platform cancels the supplier bookings and updates their stored statuses. If cancellation fails, inspect the returned state and use the supported retry action.
@@ -351,7 +390,6 @@ The cart-update checks use in-memory carts and deterministic product/supplier re
 - Uncertain supplier outcomes and incomplete compensation require operator reconciliation. No background reconciliation worker is implemented.
 - Cancellation is supported for confirmed orders and retries of failed cancellation, rather than arbitrary status editing.
 - Cart editing changes the selection for the existing product. To switch to a different product, remove the item and add the other product.
-- Order API responses contain supplier booking summaries, but not the original date and guest-selection details stored in booking records.
 - Reimport overwrites locally edited product content. Categories and active states are preserved.
 - Recent booking references depend on browser storage. Clearing it removes that browser's history; manually retained order IDs can still be looked up.
 - Localhost URL defaults, published internal-service ports, Development mode, and SQL Server administrator credentials in the demo Compose configuration require review before deployment.

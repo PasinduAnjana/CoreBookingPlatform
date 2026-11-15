@@ -1,4 +1,10 @@
+export type ProductType = "Hotel" | "Activity";
+export interface SupplierInfo {
+  code: string;
+  name: string;
+}
 export interface Product {
+  productType: ProductType;
   id: number;
   name: string;
   location?: string;
@@ -101,9 +107,19 @@ export interface Booking {
   id: number;
   productId: number;
   supplierCode: string;
+  supplierProductId: string;
+  supplierOptionId: string;
   supplierBookingId?: string;
+  checkIn?: string | null;
+  checkOut?: string | null;
+  activityDate?: string | null;
+  timeSlot?: string | null;
+  adults: number;
+  children: number;
+  rooms: number;
   status: string;
   totalPrice: number;
+  currency: string;
   errorMessage?: string;
 }
 export interface Order {

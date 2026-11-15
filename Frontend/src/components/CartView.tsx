@@ -25,6 +25,17 @@ function canCheckout(q: Quote | null) {
     !!q.currency
   );
 }
+function checkoutMessage(q: Quote | null) {
+  if (!q) return "Refresh the live quote before checking out.";
+  if (!q.allAvailable || q.items.some((item) => !item.available))
+    return "Some selections are unavailable. Edit your selection or choose different dates, then refresh the quote.";
+  const currencies = new Set(
+    q.items.map((item) => item.currency?.trim().toUpperCase()).filter(Boolean),
+  );
+  if (currencies.size > 1)
+    return "Your selections use different currencies. Checkout requires all prices to use the same currency.";
+  return "A complete price is unavailable. Refresh the live quote and try again.";
+}
 export function CartView({
   checkout = false,
   children,
@@ -156,7 +167,9 @@ export function CartView({
                       <span className="font-semibold">
                         {q.available
                           ? money(q.totalPrice, q.currency)
-                          : "Not available"}
+                          : p?.productType === "Hotel"
+                            ? `${q.availableQuantity} room${q.availableQuantity === 1 ? "" : "s"} available · ${item.rooms} requested`
+                            : "Not available"}
                       </span>
                     </>
                   ) : (
@@ -202,10 +215,9 @@ export function CartView({
               Refresh live quote
             </Button>
           )}
-          {!canCheckout(quote) && (
+          {!canCheckout(quote) && !quoteError && (
             <p role="status" className="text-sm text-destructive">
-              All selections must be available in the same currency before you
-              can book.
+              {checkoutMessage(quote)}
             </p>
           )}
           {checkout ? (

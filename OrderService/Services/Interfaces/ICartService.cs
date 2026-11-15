@@ -9,7 +9,8 @@ namespace OrderService.Services.Interfaces
 
         Task<CartDto?> GetCartAsync(Guid cartId);
 
-        Task<CartDto?> AddItemAsync(Guid cartId,AddCartItemDto dto);
+        Task<CartDto?> AddItemAsync(Guid cartId, AddCartItemDto dto,
+            CancellationToken cancellationToken = default);
 
         Task<CartDto?> UpdateItemAsync(Guid cartId, int itemId, AddCartItemDto dto,
             CancellationToken cancellationToken = default);

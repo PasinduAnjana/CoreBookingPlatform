@@ -7,5 +7,6 @@ namespace ProductService.Services.Interfaces
         Task<List<SupplierDto>> GetAllSuppliersAsync();
         Task<SupplierDto?> GetSupplierByIdAsync(int id);
         Task<SupplierDto?> GetSupplierByCodeAsync(string code);
+        Task<SupplierDto> RegisterAsync(RegisterSupplierDto dto);
     }
 }

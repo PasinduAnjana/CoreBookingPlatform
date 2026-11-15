@@ -20,7 +20,7 @@ namespace ProductService.Services
             return JsonSerializer.Serialize(value);
         }
 
-        private static List<T> DeserializeList<T>(string json)
+        private static List<T> DeserializeList<T>(string? json)
         {
             return string.IsNullOrWhiteSpace(json) ? new List<T>() : JsonSerializer.Deserialize<List<T>>(json) ?? new List<T>();
         }

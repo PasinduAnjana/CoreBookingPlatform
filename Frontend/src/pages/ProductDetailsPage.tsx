@@ -16,7 +16,7 @@ function BookingForm({ product }: { product: Product }) {
     <Card className="shadow-none lg:sticky lg:top-24">
       <CardHeader>
         <CardTitle>
-          Plan your {product.supplierCode === "ABC" ? "stay" : "experience"}
+          Plan your {product.productType === "Hotel" ? "stay" : "experience"}
         </CardTitle>
         <p className="text-sm text-muted-foreground">
           Choose your options. Live prices are checked in your cart.
@@ -56,7 +56,7 @@ export default function ProductDetailsPage() {
           <div className="grid items-start gap-8 lg:grid-cols-[1.45fr_1fr]">
             <div>
               <Badge variant="secondary" className="mb-4">
-                {p.supplierCode === "ABC" ? "Hotel" : "Activity"}
+                {p.productType === "Hotel" ? "Hotel" : "Activity"}
               </Badge>
               <h1>{p.name}</h1>
               <p className="my-4 flex items-center gap-2 text-muted-foreground">
@@ -77,7 +77,7 @@ export default function ProductDetailsPage() {
               )}
               <section className="space-y-5">
                 <h2>
-                  About this {p.supplierCode === "ABC" ? "stay" : "experience"}
+                  About this {p.productType === "Hotel" ? "stay" : "experience"}
                 </h2>
                 <p className="whitespace-pre-line leading-relaxed text-muted-foreground">
                   {c?.description || "No description is available."}

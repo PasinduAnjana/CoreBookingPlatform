@@ -31,7 +31,7 @@ export default function ManagedProductsPage() {
         <ErrorState message={result.error} retry={result.reload} />
       ) : !result.data?.length ? (
         <Empty title="No imported products">
-          Use Sync supplier catalog to fetch products from ABC and CDE.
+          Use Sync supplier catalog to fetch products from registered suppliers.
         </Empty>
       ) : (
         <div className="overflow-hidden rounded-xl border bg-white">

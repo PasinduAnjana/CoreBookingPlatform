@@ -1,4 +1,5 @@
-﻿
+using SupplierContracts;
+
 namespace IntegrationService.Models.Common
 {
     public class NormalizedCancellationRequest
@@ -18,6 +19,6 @@ namespace IntegrationService.Models.Common
         public string SupplierBookingId { get; set; }
             = string.Empty;
 
-        public string Status { get; set; } = string.Empty;
+        public SupplierBookingStatus Status { get; set; }
     }
 }

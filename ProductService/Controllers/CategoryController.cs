@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using ProductService.DTOs;
+using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 using ProductService.Services.Interfaces;
 
 namespace ProductService.Controllers
@@ -68,7 +70,7 @@ namespace ProductService.Controllers
             {
                 return Conflict(ex.Message);
             }
-            catch (Microsoft.EntityFrameworkCore.DbUpdateException)
+            catch (DbUpdateException ex) when (ex.InnerException is SqlException { Number: 547 })
             {
                 return Conflict("This category is assigned to products. Reassign those products before deleting it.");
             }

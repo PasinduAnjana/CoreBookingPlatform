@@ -14,7 +14,7 @@ export default function ProductsPage() {
   const [filter, setFilter] = useState("all");
   const items =
     result.data?.filter(
-      (p) => p.isActive && (filter === "all" || p.supplierCode === filter),
+      (p) => p.isActive && (filter === "all" || p.productType === filter),
     ) || [];
   return (
     <>
@@ -28,8 +28,8 @@ export default function ProductsPage() {
       <div className="mb-7 flex flex-wrap gap-2" aria-label="Filter products">
         {[
           ["all", "All products"],
-          ["ABC", "Hotels"],
-          ["CDE", "Activities"],
+          ["Hotel", "Hotels"],
+          ["Activity", "Activities"],
         ].map(([value, label]) => (
           <Button
             key={value}

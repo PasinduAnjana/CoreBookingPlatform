@@ -11,6 +11,7 @@ namespace OrderService.Services.Interfaces
             CancellationToken cancellationToken = default);
 
         Task<OrderDto?> GetOrderByIdAsync(Guid orderId);
+        Task<OrderDto?> UpdateOrderAsync(Guid orderId, UpdateOrderRequestDto request, CancellationToken cancellationToken);
         Task<OrderPageDto> GetOrdersAsync(int page, int pageSize, CancellationToken cancellationToken);
     }
 }

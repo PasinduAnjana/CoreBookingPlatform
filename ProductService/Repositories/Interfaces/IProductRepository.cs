@@ -17,8 +17,6 @@ namespace ProductService.Repositories.Interfaces
             int supplierId,
             string supplierProductId);
 
-        Task<Product> CreateProductAsync(Product product);
-
         Task<Product> UpdateProductAsync(Product product);
 
         Task<bool> CategoryExistsAsync(int categoryId);

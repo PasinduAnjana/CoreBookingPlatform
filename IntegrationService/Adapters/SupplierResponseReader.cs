@@ -1,32 +1,34 @@
-﻿
-using System.Net.Http.Json;
+using System.Net;
+using System.Text.Json;
+using SupplierContracts;
 
-namespace IntegrationService.Adapters
+namespace IntegrationService.Adapters;
+
+internal static class SupplierResponseReader
 {
-    public static class SupplierResponseReader
+    public static async Task<T> SendAsync<T>(HttpClient client, HttpRequestMessage request,
+        Func<HttpStatusCode, SupplierError> mapError, CancellationToken cancellationToken)
     {
-        public static async Task<T> ReadAsync<T>(
-            HttpResponseMessage response,
-            CancellationToken cancellationToken = default)
+        try
         {
+            using var response = await client.SendAsync(request, cancellationToken);
             if (!response.IsSuccessStatusCode)
-            {
-                var message = await response.Content
-                    .ReadAsStringAsync(cancellationToken);
+                throw new SupplierOperationException(mapError(response.StatusCode));
 
-                throw new SupplierApiException(
-                    response.StatusCode,
-                    string.IsNullOrWhiteSpace(message)
-                        ? "Supplier rejected the request."
-                        : message);
-            }
-
-            var result = await response.Content
-                .ReadFromJsonAsync<T>(
-                    cancellationToken: cancellationToken);
-
-            return result ?? throw new InvalidOperationException(
-                "Supplier returned an empty response.");
+            return await response.Content.ReadFromJsonAsync<T>(cancellationToken: cancellationToken)
+                ?? throw new SupplierOperationException(SupplierError.Create(SupplierErrorCode.InvalidResponse));
+        }
+        catch (HttpRequestException ex)
+        {
+            throw new SupplierOperationException(SupplierError.Create(SupplierErrorCode.Unreachable), ex);
+        }
+        catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            throw new SupplierOperationException(SupplierError.Create(SupplierErrorCode.Timeout), ex);
+        }
+        catch (Exception ex) when (ex is JsonException or NotSupportedException)
+        {
+            throw new SupplierOperationException(SupplierError.Create(SupplierErrorCode.InvalidResponse), ex);
         }
     }
 }

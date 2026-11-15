@@ -1,5 +1,5 @@
-﻿
-using System.Net;
+
+using SupplierContracts;
 using OrderService.Clients;
 using OrderService.DTOs;
 using OrderService.Models;
@@ -27,42 +27,24 @@ namespace OrderService.Services
             _integrationClient = integrationClient;
         }
 
-        private static OrderDto ToDto(Order order)
-        {
-            return new OrderDto
-            {
-                Id = order.Id,
-                CartId = order.CartId,
-                CustomerName = order.CustomerName,
-                Status = order.Status,
-                Currency = order.Currency,
-                TotalPrice = order.TotalPrice,
-                ErrorMessage = order.ErrorMessage,
-                CreatedAt = order.CreatedAt,
-
-                Bookings = order.Bookings
-                    .OrderBy(b => b.CartItemId)
-                    .Select(b => new BookingResultDto
-                    {
-                        Id = b.Id,
-                        ProductId = b.ProductId,
-                        SupplierCode = b.SupplierCode,
-                        SupplierBookingId = b.SupplierBookingId,
-                        Status = b.Status,
-                        TotalPrice = b.TotalPrice,
-                        ErrorMessage = b.ErrorMessage
-                    })
-                    .ToList()
-            };
-        }
-
         public async Task<OrderDto?> GetOrderByIdAsync(
             Guid orderId)
         {
             var order = await _repository
                 .GetOrderByIdAsync(orderId);
 
-            return order == null ? null : ToDto(order);
+            return order == null ? null : OrderDto.FromOrder(order);
+        }
+
+        public async Task<OrderDto?> UpdateOrderAsync(
+            Guid orderId, UpdateOrderRequestDto request, CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(request.CustomerName) || request.CustomerName.Length > 200)
+                throw new ArgumentException("Customer name must contain between 1 and 200 characters.");
+
+            var updated = await _repository.UpdateCustomerNameAsync(
+                orderId, request.CustomerName.Trim(), cancellationToken);
+            return updated ? await GetOrderByIdAsync(orderId) : null;
         }
 
         public async Task<OrderPageDto> GetOrdersAsync(int page, int pageSize, CancellationToken cancellationToken)
@@ -70,7 +52,7 @@ namespace OrderService.Services
             var result = await _repository.GetOrdersAsync(page, pageSize, cancellationToken);
             return new OrderPageDto
             {
-                Items = result.Items.Select(ToDto).ToList(),
+                Items = result.Items.Select(OrderDto.FromOrder).ToList(),
                 TotalCount = result.TotalCount,
                 Page = page,
                 PageSize = pageSize
@@ -90,7 +72,7 @@ namespace OrderService.Services
                 .GetOrderByCartIdAsync(cartId);
 
             if (existing != null)
-                return ToDto(existing);
+                return OrderDto.FromOrder(existing);
 
             var cart = await _repository.GetCartAsync(cartId);
 
@@ -210,21 +192,17 @@ namespace OrderService.Services
                         .CreateBookingAsync(
                             supplierRequest, cancellationToken);
 
-                    if (string.IsNullOrWhiteSpace(
-                        result.SupplierBookingId))
-                    {
-                        throw new InvalidOperationException(
-                            "Supplier booking confirmation ID is missing.");
-                    }
-
                     booking.SupplierBookingId =
                         result.SupplierBookingId;
 
-                    booking.Status = string.Equals(
-                        result.Status, "Confirmed",
-                        StringComparison.OrdinalIgnoreCase)
-                        ? BookingStatus.Confirmed
-                        : BookingStatus.Unknown;
+                    booking.Status = result.Status switch
+                    {
+                        SupplierBookingStatus.Confirmed when !string.IsNullOrWhiteSpace(result.SupplierBookingId)
+                            => BookingStatus.Confirmed,
+                        SupplierBookingStatus.Failed => BookingStatus.Failed,
+                        SupplierBookingStatus.Cancelled => BookingStatus.Cancelled,
+                        _ => BookingStatus.Unknown
+                    };
 
                     booking.TotalPrice = result.TotalPrice;
                     booking.Currency = result.Currency;
@@ -232,15 +210,14 @@ namespace OrderService.Services
                     if (booking.Status != BookingStatus.Confirmed)
                     {
                         checkoutFailed = true;
-                        outcomeUncertain = true;
+                        outcomeUncertain = booking.Status == BookingStatus.Unknown;
+                        booking.ErrorMessage = "The supplier did not confirm the booking.";
                     }
                 }
-                catch (HttpRequestException ex)
-                    when (ex.StatusCode == HttpStatusCode.BadRequest ||
-                          ex.StatusCode == HttpStatusCode.NotFound ||
-                          ex.StatusCode == HttpStatusCode.Conflict)
+                catch (SupplierOperationException ex)
+                    when (ex.Error.Outcome == SupplierErrorOutcome.Rejected)
                 {
-                    // A definitive rejection from IntegrationService.
+                    // Only a normalized, explicit rejection establishes failure.
                     booking.Status = BookingStatus.Failed;
                     booking.ErrorMessage = ex.Message;
                     checkoutFailed = true;
@@ -284,9 +261,8 @@ namespace OrderService.Services
                                 },
                                 CancellationToken.None);
 
-                        if (!string.Equals(
-                            cancelled.Status, "Cancelled",
-                            StringComparison.OrdinalIgnoreCase))
+                        if (cancelled.Status != SupplierBookingStatus.Cancelled ||
+                            cancelled.SupplierBookingId != booking.SupplierBookingId)
                         {
                             throw new InvalidOperationException(
                                 "Supplier did not confirm cancellation.");
@@ -314,7 +290,7 @@ namespace OrderService.Services
 
                 await _repository.SaveChangesAsync();
 
-                return ToDto(order);
+                return OrderDto.FromOrder(order);
             }
 
             order.Status = OrderStatus.Confirmed;
@@ -323,7 +299,7 @@ namespace OrderService.Services
 
             await _repository.SaveChangesAsync();
 
-            return ToDto(order);
+            return OrderDto.FromOrder(order);
         }
     }
 }

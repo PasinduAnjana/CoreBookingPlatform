@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/table";
 import { ErrorState } from "@/components/shared";
 import { errorMessage, isNotFound } from "@/lib/api";
+import { useLoad } from "@/hooks/useLoad";
 export function SupplierSync({ onDone }: { onDone: () => void }) {
   const [open, setOpen] = useState(false),
     [supplier, setSupplier] = useState("all"),
@@ -36,6 +37,10 @@ export function SupplierSync({ onDone }: { onDone: () => void }) {
     [results, setResults] = useState<ImportSummary[]>([]),
     [errors, setErrors] = useState<string[]>([]),
     lock = useRef(false);
+  const suppliers = useLoad(
+    () => (open ? management.suppliers() : Promise.resolve([])),
+    [open],
+  );
   async function sync() {
     if (lock.current) return;
     lock.current = true;
@@ -44,10 +49,14 @@ export function SupplierSync({ onDone }: { onDone: () => void }) {
     setErrors([]);
     let failed = false;
     try {
-      for (const code of (supplier === "all" ? ["ABC", "CDE"] : [supplier]) as (
-        | "ABC"
-        | "CDE"
-      )[]) {
+      const selected = (suppliers.data ?? []).filter(
+        (s) => supplier === "all" || s.code === supplier,
+      );
+      if (!selected.length) {
+        setErrors(["Select an available supplier."]);
+        return;
+      }
+      for (const { code } of selected) {
         try {
           const r = await management.sync(code);
           setResults((v) => [...v, r]);
@@ -105,13 +114,30 @@ export function SupplierSync({ onDone }: { onDone: () => void }) {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Both suppliers</SelectItem>
-              <SelectItem value="ABC">ABC · Hotels</SelectItem>
-              <SelectItem value="CDE">CDE · Activities</SelectItem>
+              <SelectItem value="all">All suppliers</SelectItem>
+              {suppliers.data?.map((s) => (
+                <SelectItem key={s.code} value={s.code}>
+                  {s.name} · {s.code}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
-        <Button disabled={busy} onClick={() => void sync()}>
+        {suppliers.error && (
+          <ErrorState message={suppliers.error} retry={suppliers.reload} />
+        )}
+        {!suppliers.loading && !suppliers.error && !suppliers.data?.length && (
+          <p>No supplier adapters are registered.</p>
+        )}
+        <Button
+          disabled={
+            busy ||
+            suppliers.loading ||
+            !!suppliers.error ||
+            !suppliers.data?.length
+          }
+          onClick={() => void sync()}
+        >
           <RefreshCw className={`size-4 ${busy ? "animate-spin" : ""}`} />
           {busy ? "Importing products…" : "Run import"}
         </Button>

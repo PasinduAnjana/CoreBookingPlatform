@@ -18,7 +18,7 @@ namespace ProductService.Repositories
             return await _context.Categories.ToListAsync();
         }
 
-        public async Task<Category> GetCategoryByIdAsync(int id)
+        public async Task<Category?> GetCategoryByIdAsync(int id)
         {
             return await _context.Categories.FindAsync(id);
         }
@@ -49,11 +49,6 @@ namespace ProductService.Repositories
             _context.Categories.Remove(category);
             await _context.SaveChangesAsync();
             return true;
-        }
-
-        public async Task<int> SaveChangesAsync()
-        {
-            return await _context.SaveChangesAsync();
         }
 
     }

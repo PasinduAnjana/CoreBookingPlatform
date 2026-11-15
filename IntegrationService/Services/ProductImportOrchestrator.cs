@@ -4,25 +4,30 @@
     {
         private readonly SupplierIntegrationService _supplierService;
         private readonly ProductServiceClient _productClient;
+        private readonly SupplierAdapterRegistry _registry;
 
         public ProductImportOrchestrator(
             SupplierIntegrationService supplierService,
-            ProductServiceClient productClient)
+            ProductServiceClient productClient,
+            SupplierAdapterRegistry registry)
         {
             _supplierService = supplierService;
             _productClient = productClient;
+            _registry = registry;
         }
 
         public async Task<ImportSummary> ImportAsync(
             string supplierCode,
             CancellationToken cancellationToken = default)
         {
-            var products = await _supplierService.GetProductsAsync(
-                supplierCode, cancellationToken);
+            var adapter = _registry.GetAdapter(supplierCode);
+            await _productClient.RegisterSupplierAsync(
+                new() { Code = adapter.SupplierCode, Name = adapter.SupplierName }, cancellationToken);
+            var products = await _supplierService.GetProductsAsync(adapter.SupplierCode, cancellationToken);
 
             var summary = new ImportSummary
             {
-                SupplierCode = supplierCode,
+                SupplierCode = adapter.SupplierCode,
                 Total = products.Count
             };
 
@@ -30,6 +35,9 @@
             {
                 try
                 {
+                    if (!string.Equals(product.SupplierCode, adapter.SupplierCode, StringComparison.OrdinalIgnoreCase))
+                        throw new ArgumentException("Catalog product does not belong to the selected supplier.");
+                    product.SupplierCode = adapter.SupplierCode;
                     var result = await _productClient
                         .ImportProductAsync(product, cancellationToken);
 

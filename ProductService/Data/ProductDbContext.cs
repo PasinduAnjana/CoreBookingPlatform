@@ -18,6 +18,7 @@ namespace ProductService.Data
         {
             base.OnModelCreating(modelBuilder);
             // Relationships and constraints
+            modelBuilder.Entity<Product>().Property(p => p.ProductType).HasMaxLength(20).IsRequired();
             modelBuilder.Entity<Supplier>()
                 .HasIndex(s => s.Code)
                 .IsUnique();
