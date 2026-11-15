@@ -75,7 +75,7 @@ export function Empty({
   return (
     <div className="rounded-xl border border-dashed bg-white px-6 py-14 text-center">
       <h2>{title}</h2>
-      <div className="mx-auto mt-3 max-w-md text-sm text-muted-foreground">
+      <div className="mx-auto mt-3 flex max-w-md flex-col items-center text-sm text-muted-foreground">
         {children}
       </div>
     </div>
